@@ -95,6 +95,13 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
                     <Input id="phone" name="phone" defaultValue={member.phone} className="col-span-3" />
                 </div>
                  {state.error?.phone && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.phone[0]}</p>}
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">
+                    Email
+                    </Label>
+                    <Input id="email" name="email" type="email" defaultValue={member.email} className="col-span-3" />
+                </div>
+                 {state.error?.email && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.email[0]}</p>}
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="groups" className="text-right">
                         Groups
@@ -111,6 +118,7 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
                         ))}
                     </div>
                  </div>
+                 {state.error?.groups && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.groups[0]}</p>}
             </div>
             <DialogFooter>
                 <SubmitButton />

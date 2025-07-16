@@ -39,7 +39,8 @@ export async function sendSms(formData: FormData) {
 const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   phone: z.string().min(10, 'Please enter a valid phone number.'),
-  groups: z.array(z.string()).optional(),
+  email: z.string().email('Please enter a valid email.').optional().or(z.literal('')),
+  groups: z.array(z.string()).min(1, 'Please select at least one group.'),
 });
 
 
@@ -48,6 +49,7 @@ export async function addMember(formData: FormData) {
     const parsed = memberSchema.safeParse({
       name: formData.get('name'),
       phone: formData.get('phone'),
+      email: formData.get('email'),
       groups: formData.getAll('groups'),
     });
 
@@ -55,11 +57,12 @@ export async function addMember(formData: FormData) {
       return { success: false, error: parsed.error.format() };
     }
     
-    const { name, phone, groups } = parsed.data;
+    const { name, phone, email, groups } = parsed.data;
 
     await addDoc(collection(db, 'contacts'), {
       name,
       phone,
+      email: email || '',
       groups: groups || [],
     });
 
@@ -82,6 +85,7 @@ export async function updateMember(formData: FormData) {
             id: formData.get('id'),
             name: formData.get('name'),
             phone: formData.get('phone'),
+            email: formData.get('email'),
             groups: formData.getAll('groups'),
         });
 
@@ -89,10 +93,10 @@ export async function updateMember(formData: FormData) {
             return { success: false, error: parsed.error.format() };
         }
 
-        const { id, name, phone, groups } = parsed.data;
+        const { id, name, phone, email, groups } = parsed.data;
 
         const memberRef = doc(db, 'contacts', id);
-        await updateDoc(memberRef, { name, phone, groups: groups || [] });
+        await updateDoc(memberRef, { name, phone, email: email || '', groups: groups || [] });
 
         revalidatePath('/members');
         return { success: true };

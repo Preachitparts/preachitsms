@@ -35,6 +35,7 @@ export function MembersTable({ members, groups }: { members: Contact[]; groups: 
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Phone</TableHead>
+          <TableHead>Email</TableHead>
           <TableHead>Groups</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -44,6 +45,7 @@ export function MembersTable({ members, groups }: { members: Contact[]; groups: 
           <TableRow key={member.id}>
             <TableCell className="font-medium">{member.name}</TableCell>
             <TableCell>{member.phone}</TableCell>
+            <TableCell>{member.email}</TableCell>
             <TableCell>
                 <div className="flex flex-wrap gap-1">
                     {getGroupNames(member.groups).map(name => (
