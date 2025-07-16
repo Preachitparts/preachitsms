@@ -49,6 +49,11 @@ export async function getGroups(): Promise<Group[]> {
 
 export async function getSmsHistory(): Promise<SmsRecord[]> {
   // Mock data for now
-  const smsHistory: SmsRecord[] = [];
+  const smsHistory: SmsRecord[] = [
+    { id: '1', recipient: 'John Doe', message: 'Hello, this is a test message.', status: 'Sent', date: '2024-05-21' },
+    { id: '2', recipient: 'Jane Smith', message: 'Your appointment is confirmed.', status: 'Sent', date: '2024-05-20' },
+    { id: '3', recipient: 'Peter Jones', message: 'Failed to deliver message.', status: 'Failed', date: '2024-05-20' },
+    { id: '4', recipient: 'Mary Johnson', message: 'Your package is out for delivery.', status: 'Pending', date: '2024-05-21' },
+  ];
   return smsHistory;
 }
