@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Contact } from '@/lib/data';
+import { EditMemberButton } from './edit-member-button';
+import { DeleteMemberButton } from './delete-member-button';
 
 export function MembersTable({ members }: { members: Contact[] }) {
     if (members.length === 0) {
@@ -43,8 +45,8 @@ export function MembersTable({ members }: { members: Contact[] }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                  <EditMemberButton member={member} />
+                  <DeleteMemberButton memberId={member.id} />
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>

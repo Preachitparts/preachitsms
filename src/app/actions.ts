@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
@@ -66,4 +66,52 @@ export async function addMember(formData: FormData) {
     console.error("Error adding member:", error);
     return { success: false, error: { _errors: ["An unexpected error occurred."] } };
   }
+}
+
+const updateMemberSchema = memberSchema.extend({
+    id: z.string().min(1, 'Member ID is required.'),
+});
+
+export async function updateMember(formData: FormData) {
+    try {
+        const parsed = updateMemberSchema.safeParse({
+            id: formData.get('id'),
+            name: formData.get('name'),
+            phone: formData.get('phone'),
+        });
+
+        if (!parsed.success) {
+            return { success: false, error: parsed.error.format() };
+        }
+
+        const { id, name, phone } = parsed.data;
+
+        const memberRef = doc(db, 'contacts', id);
+        await updateDoc(memberRef, { name, phone });
+
+        revalidatePath('/members');
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error updating member:", error);
+        return { success: false, error: { _errors: ["An unexpected error occurred."] } };
+    }
+}
+
+
+export async function deleteMember(formData: FormData) {
+    try {
+        const id = formData.get('id') as string;
+        if (!id) {
+            return { success: false, error: 'Member ID is missing.' };
+        }
+
+        await deleteDoc(doc(db, 'contacts', id));
+
+        revalidatePath('/members');
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting member:", error);
+        return { success: false, error: 'An unexpected error occurred.' };
+    }
 }
