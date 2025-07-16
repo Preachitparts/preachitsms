@@ -4,12 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 // IMPORTANT: Replace this with your own Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDPBnv9n56CBoNobFijN8hf3wBL2smuEDk",
+  authDomain: "preach-it-sms.firebaseapp.com",
+  projectId: "preach-it-sms",
+  storageBucket: "preach-it-sms.appspot.com",
+  messagingSenderId: "348405568862",
+  appId: "1:348405568862:web:1d2c56e26b2fd3a1caebcf",
+  measurementId: "G-4DY8CQ02RS"
 };
 
 
