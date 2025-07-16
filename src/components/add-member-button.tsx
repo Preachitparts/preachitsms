@@ -20,6 +20,7 @@ import { addMember } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Group } from '@/lib/data';
 import { MultiSelect } from './ui/multi-select';
+import { useRef } from 'react';
 
 const initialState = {
   error: null,
@@ -41,6 +42,7 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
   const [state, formAction] = useFormState(addMember, initialState);
   const { toast } = useToast();
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
@@ -52,6 +54,7 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
       });
       setOpen(false);
       setSelectedGroups([]);
+      formRef.current?.reset();
     } else if (state.error) {
        const errors = Object.values(state.error).flat().join(', ');
         toast({
@@ -62,9 +65,17 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
     }
   }, [state, toast]);
 
+  const onOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+        formRef.current?.reset();
+        setSelectedGroups([]);
+    }
+    setOpen(isOpen);
+  }
+
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2" />
@@ -78,7 +89,7 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
             Enter the details of the new member below. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form action={formAction}>
+        <form ref={formRef} action={formAction}>
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">

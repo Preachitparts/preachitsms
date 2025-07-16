@@ -40,14 +40,28 @@ export async function getContacts(): Promise<Contact[]> {
 }
 
 export async function getGroups(): Promise<Group[]> {
-  // This is still mock data. We can connect this to Firestore next if you like.
-   const groups: Group[] = [
-    { id: 'g1', name: 'VIP Customers', memberCount: 12 },
-    { id: 'g2', name: 'New Leads', memberCount: 45 },
-    { id: 'g3', name: 'Tier 1 Suppliers', memberCount: 8 },
-    { id: 'g4', name: 'All Staff', memberCount: 22 },
-  ];
-  return groups;
+  try {
+    const contacts = await getContacts();
+    const groupsCol = collection(db, 'groups');
+    const groupsSnapshot = await getDocs(groupsCol);
+    
+    const groupsList = groupsSnapshot.docs.map(doc => {
+      const groupData = doc.data();
+      const memberCount = contacts.filter(c => c.groups?.includes(doc.id)).length;
+      return {
+        id: doc.id,
+        name: groupData.name,
+        memberCount: memberCount,
+      } as Group
+    });
+
+    return groupsList;
+  } catch (error) {
+    console.error("Error fetching groups: ", error);
+    // You might want to seed initial groups if the collection doesn't exist.
+    // For now, returning an empty array on error.
+    return [];
+  }
 }
 
 export async function getSmsHistory(): Promise<SmsRecord[]> {

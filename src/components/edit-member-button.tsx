@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +43,7 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
   const [state, formAction] = useFormState(updateMember, initialState);
   const { toast } = useToast();
   const [selectedGroups, setSelectedGroups] = useState<string[]>(member.groups || []);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
@@ -63,9 +64,17 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
     }
   }, [state, toast]);
 
+  const onOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+        formRef.current?.reset();
+        setSelectedGroups(member.groups || []);
+    }
+    setOpen(isOpen);
+  }
+
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
             Edit
@@ -78,7 +87,7 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
             Update the details of the member below. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form action={formAction}>
+        <form ref={formRef} action={formAction}>
             <input type="hidden" name="id" value={member.id} />
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">

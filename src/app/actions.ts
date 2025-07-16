@@ -44,7 +44,7 @@ const memberSchema = z.object({
 });
 
 
-export async function addMember(formData: FormData) {
+export async function addMember(prevState: any, formData: FormData) {
   try {
     const parsed = memberSchema.safeParse({
       name: formData.get('name'),
@@ -79,7 +79,7 @@ const updateMemberSchema = memberSchema.extend({
     id: z.string().min(1, 'Member ID is required.'),
 });
 
-export async function updateMember(formData: FormData) {
+export async function updateMember(prevState: any, formData: FormData) {
     try {
         const parsed = updateMemberSchema.safeParse({
             id: formData.get('id'),
@@ -101,7 +101,8 @@ export async function updateMember(formData: FormData) {
         revalidatePath('/members');
         return { success: true };
 
-    } catch (error) {
+    } catch (error)
+    {
         console.error("Error updating member:", error);
         return { success: false, error: { _errors: ["An unexpected error occurred."] } };
     }
