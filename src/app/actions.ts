@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -38,6 +39,7 @@ export async function sendSms(formData: FormData) {
 const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   phone: z.string().min(10, 'Please enter a valid phone number.'),
+  groups: z.array(z.string()).optional(),
 });
 
 
@@ -46,17 +48,19 @@ export async function addMember(formData: FormData) {
     const parsed = memberSchema.safeParse({
       name: formData.get('name'),
       phone: formData.get('phone'),
+      groups: formData.getAll('groups'),
     });
 
     if (!parsed.success) {
       return { success: false, error: parsed.error.format() };
     }
     
-    const { name, phone } = parsed.data;
+    const { name, phone, groups } = parsed.data;
 
     await addDoc(collection(db, 'contacts'), {
       name,
       phone,
+      groups: groups || [],
     });
 
     revalidatePath('/members');
@@ -78,16 +82,17 @@ export async function updateMember(formData: FormData) {
             id: formData.get('id'),
             name: formData.get('name'),
             phone: formData.get('phone'),
+            groups: formData.getAll('groups'),
         });
 
         if (!parsed.success) {
             return { success: false, error: parsed.error.format() };
         }
 
-        const { id, name, phone } = parsed.data;
+        const { id, name, phone, groups } = parsed.data;
 
         const memberRef = doc(db, 'contacts', id);
-        await updateDoc(memberRef, { name, phone });
+        await updateDoc(memberRef, { name, phone, groups: groups || [] });
 
         revalidatePath('/members');
         return { success: true };

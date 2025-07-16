@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,8 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { addMember } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { Group } from '@/lib/data';
+import { MultiSelect } from './ui/multi-select';
 
 const initialState = {
   error: null,
@@ -35,10 +36,13 @@ function SubmitButton() {
   );
 }
 
-export function AddMemberButton() {
+export function AddMemberButton({ groups }: { groups: Group[] }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useFormState(addMember, initialState);
   const { toast } = useToast();
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+
+  const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
   useEffect(() => {
     if (state.success) {
@@ -47,6 +51,7 @@ export function AddMemberButton() {
         description: 'New member has been added.',
       });
       setOpen(false);
+      setSelectedGroups([]);
     } else if (state.error) {
        const errors = Object.values(state.error).flat().join(', ');
         toast({
@@ -89,6 +94,23 @@ export function AddMemberButton() {
                     <Input id="phone" name="phone" className="col-span-3" />
                 </div>
                  {state.error?.phone && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.phone[0]}</p>}
+
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="groups" className="text-right">
+                        Groups
+                    </Label>
+                    <div className="col-span-3">
+                        <MultiSelect
+                            options={groupOptions}
+                            onValueChange={setSelectedGroups}
+                            defaultValue={[]}
+                            placeholder="Select groups..."
+                        />
+                        {selectedGroups.map(groupId => (
+                            <input type="hidden" name="groups" key={groupId} value={groupId} />
+                        ))}
+                    </div>
+                 </div>
             </div>
             <DialogFooter>
                 <SubmitButton />

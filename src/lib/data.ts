@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -5,6 +6,7 @@ export interface Contact {
   id: string;
   name: string;
   phone: string;
+  groups?: string[];
 }
 
 export interface Group {
