@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageSquareText, LayoutDashboard, History, LogOut } from 'lucide-react';
+import { MessageSquareText, LayoutDashboard, History, LogOut, Users, Folder, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,24 @@ import {
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  const getPageTitle = () => {
+    switch (pathname) {
+      case '/':
+        return 'Dashboard';
+      case '/history':
+        return 'History';
+      case '/members':
+        return 'Members';
+      case '/groups':
+        return 'Groups';
+      case '/settings':
+        return 'Settings';
+      default:
+        return 'Dashboard';
+    }
+  };
+
 
   return (
     <SidebarProvider>
@@ -59,6 +77,30 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/members'}>
+                  <Link href="/members">
+                    <Users />
+                    Members
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/groups'}>
+                  <Link href="/groups">
+                    <Folder />
+                    Groups
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/settings'}>
+                  <Link href="/settings">
+                    <Settings />
+                    Settings
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -97,7 +139,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
           <SidebarTrigger className="md:hidden" />
           <h2 className="text-xl font-headline font-semibold">
-            {pathname === '/' ? 'Dashboard' : 'History'}
+            {getPageTitle()}
           </h2>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">
