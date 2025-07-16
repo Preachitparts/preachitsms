@@ -1,12 +1,11 @@
+'use client';
+
 import { MainLayout } from '@/components/main-layout';
 import { ContactSelector } from '@/components/contact-selector';
 import { MessageComposer } from '@/components/message-composer';
-import { getContacts, getGroups } from '@/lib/data';
+import type { Contact, Group } from '@/lib/data';
 
-export default async function DashboardPage() {
-  const contacts = await getContacts();
-  const groups = await getGroups();
-
+function DashboardClient({ contacts, groups }: { contacts: Contact[], groups: Group[] }) {
   return (
     <MainLayout>
       <div className="grid h-full gap-6 lg:grid-cols-5">
@@ -19,4 +18,13 @@ export default async function DashboardPage() {
       </div>
     </MainLayout>
   );
+}
+
+import { getContacts, getGroups } from '@/lib/data';
+
+export default async function DashboardPage() {
+  const contacts = await getContacts();
+  const groups = await getGroups();
+
+  return <DashboardClient contacts={contacts} groups={groups} />;
 }
