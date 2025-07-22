@@ -1,6 +1,7 @@
 
+
 import { db } from './firebase';
-import { collection, getDocs, query, orderBy, getDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, getDoc, doc, Timestamp, limit,getCountFromServer } from 'firebase/firestore';
 
 export interface Contact {
   id: string;
@@ -29,6 +30,12 @@ export interface SmsRecord {
   date: string;
   createdAt: any;
 }
+
+export interface DashboardStats {
+  smsCount: number;
+  lastSentDate: string | null;
+}
+
 
 export async function getContacts(): Promise<Contact[]> {
   try {
@@ -100,4 +107,30 @@ export async function getSmsHistory(): Promise<SmsRecord[]> {
     console.error("Error fetching SMS history: ", error);
     return [];
   }
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+    try {
+        const historyCol = collection(db, 'smsHistory');
+        
+        // Get total count of sent messages
+        const countSnapshot = await getCountFromServer(historyCol);
+        const smsCount = countSnapshot.data().count;
+
+        // Get the last sent message
+        const lastSentQuery = query(historyCol, orderBy('createdAt', 'desc'), limit(1));
+        const lastSentSnapshot = await getDocs(lastSentQuery);
+
+        let lastSentDate: string | null = null;
+        if (!lastSentSnapshot.empty) {
+            const lastSentDoc = lastSentSnapshot.docs[0].data();
+            lastSentDate = lastSentDoc.date; // Assuming 'date' is a string like 'YYYY-MM-DD'
+        }
+        
+        return { smsCount, lastSentDate };
+
+    } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        return { smsCount: 0, lastSentDate: null };
+    }
 }
