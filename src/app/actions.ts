@@ -85,13 +85,19 @@ export async function sendSms(formData: FormData) {
       : [];
     
     const authHeader = `Basic ${Buffer.from(`${apiKeys.clientId}:${apiKeys.clientSecret}`).toString('base64')}`;
-    const recipientsString = Array.from(allRecipientNumbers).join(',');
+    const recipientsArray = Array.from(allRecipientNumbers);
     
-    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?from=${senderId}&to=${recipientsString}&content=${encodeURIComponent(message)}`, {
-        method: 'GET',
+    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send`, {
+        method: 'POST',
         headers: {
             'Authorization': authHeader,
+            'Content-Type': 'application/json'
         },
+        body: JSON.stringify({
+            From: senderId,
+            To: recipientsArray,
+            Content: message,
+        })
     });
     
     const hubtelResultText = await hubtelResponse.text();
@@ -99,12 +105,14 @@ export async function sendSms(formData: FormData) {
     try {
         hubtelResult = JSON.parse(hubtelResultText);
     } catch(e) {
-        throw new Error(`Hubtel API returned an invalid response: ${hubtelResultText}`);
+        console.error("Hubtel API invalid JSON response:", hubtelResultText);
+        throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}`);
     }
 
 
     if (!hubtelResponse.ok || hubtelResult.status !== 0) {
-         throw new Error(hubtelResult.message || hubtelResult.Message || 'Hubtel API request failed.');
+         console.error("Hubtel API Error:", hubtelResult);
+         throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed with status ${hubtelResult.status}.`);
     }
     
     await addDoc(collection(db, 'smsHistory'), {

@@ -57,6 +57,22 @@ export function ContactSelector({ contacts, groups, selectedContacts, setSelecte
       return newSet;
     });
   };
+  
+  const handleSelectAllContacts = (checked: boolean) => {
+      if(checked) {
+        setSelectedContacts(new Set(filteredContacts.map(c => c.id)));
+      } else {
+        setSelectedContacts(new Set());
+      }
+  };
+
+  const handleSelectAllGroups = (checked: boolean) => {
+      if(checked) {
+        setSelectedGroups(new Set(filteredGroups.map(g => g.id)));
+      } else {
+        setSelectedGroups(new Set());
+      }
+  };
 
   const totalRecipients = useMemo(() => {
     let count = selectedContacts.size;
@@ -100,45 +116,67 @@ export function ContactSelector({ contacts, groups, selectedContacts, setSelecte
             <TabsTrigger value="groups">Groups</TabsTrigger>
           </TabsList>
           <TabsContent value="individuals" className="flex-grow mt-4 overflow-hidden">
-            <ScrollArea className="h-[300px] pr-4">
-              <div className="space-y-4">
-                {filteredContacts.map(contact => (
-                  <div key={contact.id} className="flex items-center space-x-3">
+             <div className="space-y-4">
+                <div className="flex items-center space-x-3 border-b pb-3 mb-3">
                     <Checkbox
-                      id={`contact-${contact.id}`}
-                      checked={selectedContacts.has(contact.id)}
-                      onCheckedChange={() => handleContactSelect(contact.id)}
+                        id="select-all-contacts"
+                        checked={filteredContacts.length > 0 && selectedContacts.size === filteredContacts.length}
+                        indeterminate={selectedContacts.size > 0 && selectedContacts.size < filteredContacts.length}
+                        onCheckedChange={(checked) => handleSelectAllContacts(Boolean(checked))}
                     />
-                    <label htmlFor={`contact-${contact.id}`} className="flex items-center gap-3 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      {contact.name}
+                     <label htmlFor="select-all-contacts" className="text-sm font-medium leading-none">
+                        Select All Individuals
                     </label>
-                  </div>
-                ))}
+                </div>
+                <ScrollArea className="h-[260px] pr-4">
+                  {filteredContacts.map(contact => (
+                    <div key={contact.id} className="flex items-center space-x-3 mb-3">
+                      <Checkbox
+                        id={`contact-${contact.id}`}
+                        checked={selectedContacts.has(contact.id)}
+                        onCheckedChange={() => handleContactSelect(contact.id)}
+                      />
+                      <label htmlFor={`contact-${contact.id}`} className="flex items-center gap-3 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {contact.name}
+                      </label>
+                    </div>
+                  ))}
+                </ScrollArea>
               </div>
-            </ScrollArea>
           </TabsContent>
           <TabsContent value="groups" className="flex-grow mt-4 overflow-hidden">
-            <ScrollArea className="h-[300px] pr-4">
-              <div className="space-y-4">
-                {filteredGroups.map(group => (
-                  <div key={group.id} className="flex items-center space-x-3">
+             <div className="space-y-4">
+                 <div className="flex items-center space-x-3 border-b pb-3 mb-3">
                     <Checkbox
-                      id={`group-${group.id}`}
-                      checked={selectedGroups.has(group.id)}
-                      onCheckedChange={() => handleGroupSelect(group.id)}
+                        id="select-all-groups"
+                        checked={filteredGroups.length > 0 && selectedGroups.size === filteredGroups.length}
+                        indeterminate={selectedGroups.size > 0 && selectedGroups.size < filteredGroups.length}
+                        onCheckedChange={(checked) => handleSelectAllGroups(Boolean(checked))}
                     />
-                    <label htmlFor={`group-${group.id}`} className="flex items-center justify-between flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                     <label htmlFor="select-all-groups" className="text-sm font-medium leading-none">
+                        Select All Groups
+                    </label>
+                </div>
+                <ScrollArea className="h-[260px] pr-4">
+                  {filteredGroups.map(group => (
+                    <div key={group.id} className="flex items-center space-x-3 mb-3">
+                      <Checkbox
+                        id={`group-${group.id}`}
+                        checked={selectedGroups.has(group.id)}
+                        onCheckedChange={() => handleGroupSelect(group.id)}
+                      />
+                      <label htmlFor={`group-${group.id}`} className="flex items-center justify-between flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                        <span className="flex items-center gap-3">
                         <Users className="h-4 w-4 text-muted-foreground" />
                         {group.name}
                        </span>
-                      <Badge variant="secondary">{group.memberCount} members</Badge>
-                    </label>
-                  </div>
-                ))}
+                        <Badge variant="secondary">{group.memberCount} members</Badge>
+                      </label>
+                    </div>
+                  ))}
+                </ScrollArea>
               </div>
-            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
