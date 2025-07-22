@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
 
@@ -61,13 +61,18 @@ export async function signup(formData: FormData) {
 
         let canSeeSettings = false;
         let invitedDocId: string | null = null;
+        let isInvited = false;
         
         if (!querySnapshot.empty) {
             const invitedDoc = querySnapshot.docs[0];
+            if (invitedDoc.data().status === 'registered') {
+                return { error: "This email is already registered." };
+            }
             canSeeSettings = invitedDoc.data().canSeeSettings;
             invitedDocId = invitedDoc.id;
+            isInvited = true;
         } else {
-             // For the very first admin signup
+             // If not invited, check if this is the very first admin signup
             const adminsSnapshot = await getDocs(collection(db, 'admins'));
             if (adminsSnapshot.empty) {
                 canSeeSettings = true; // First user is super admin
@@ -80,31 +85,32 @@ export async function signup(formData: FormData) {
         const user = userCredential.user;
 
         const adminData = {
+            uid: user.uid,
             email: user.email,
             fullName,
             canSeeSettings,
+            status: 'registered',
         };
 
-        if (invitedDocId) {
-            // Because we can't reliably know the UID until after creation,
-            // we will update the invitation record instead of creating a new doc with the UID
-            await updateDoc(doc(db, 'admins', invitedDocId), { 
-              status: 'registered', 
-              uid: user.uid,
-              fullName: fullName,
-              canSeeSettings: canSeeSettings,
-            });
+        if (isInvited && invitedDocId) {
+            // If the user was invited, we update their invitation record with the new details.
+            // Using a write batch to ensure atomicity if needed, though a simple update is also fine.
+            const batch = writeBatch(db);
+            const adminRef = doc(db, "admins", invitedDocId);
+            batch.update(adminRef, adminData);
+            await batch.commit();
         } else {
-            // This path is for the very first admin
+            // This path is for the very first admin. We create a new doc with their UID.
             await setDoc(doc(db, 'admins', user.uid), adminData);
         }
 
         // We are not logging the user in automatically after signup for security.
-        return { error: null };
+        return { error: null, success: true };
     } catch (e: any) {
         if (e.code === 'auth/email-already-in-use') {
             return { error: 'This email is already registered.' };
         }
+        console.error("Signup error:", e);
         return { error: 'An unexpected error occurred during signup.' };
     }
 }
@@ -152,8 +158,6 @@ export async function getCurrentUser() {
     }
 
     try {
-        // This is a simplified, non-verified decoding for demonstration in a secure server environment.
-        // A production app should use the Firebase Admin SDK to verify the token.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
@@ -161,7 +165,7 @@ export async function getCurrentUser() {
             return null;
         }
 
-        // First, try fetching the admin doc using the UID as the document ID.
+        // Try fetching admin doc by UID first. This is the most common case.
         let adminDocRef = doc(db, 'admins', uid);
         let adminDoc = await getDoc(adminDocRef);
 
@@ -172,11 +176,11 @@ export async function getCurrentUser() {
             } as Admin;
         }
     
-        // If not found, it might be an invited user whose document ID is not yet the UID.
-        // Query by email instead.
+        // If not found by UID, they might be an invited user whose doc ID is not yet the UID.
+        // This is a fallback and should be less common after the first login.
         const email = decodedToken.email;
         if (email) {
-            const q = query(collection(db, 'admins'), where('email', '==', email));
+            const q = query(collection(db, 'admins'), where('email', '==', email), where('status', '==', 'registered'));
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
                 const doc = querySnapshot.docs[0];
@@ -187,7 +191,12 @@ export async function getCurrentUser() {
             }
         }
         
+        // If we reach here, the user is authenticated with Firebase but has no admin record.
+        // This could be a security concern or an edge case. For now, we deny access.
+        console.warn(`User with UID ${uid} is authenticated but not found in 'admins' collection.`);
+        cookies().delete('firebaseIdToken');
         return null;
+
     } catch(e) {
         console.error("Failed to decode token or fetch user", e);
         // If token is invalid, clear the cookie

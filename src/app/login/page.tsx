@@ -41,6 +41,8 @@ export default function LoginPage() {
           router.refresh();
         } else {
           setIsLogin(true); // Switch to login view after signup
+          // Clear form fields
+          (event.target as HTMLFormElement).reset();
         }
       }
     });
@@ -55,7 +57,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="font-headline text-3xl">Preach It SMS</CardTitle>
           <CardDescription>
-            {isLogin ? 'Sign in to your account' : 'Create a new account'}
+            {isLogin ? 'Sign in to your account' : 'Create the first admin account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -68,11 +70,11 @@ export default function LoginPage() {
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="name@example.com" required defaultValue="admin@example.com" />
+              <Input id="email" name="email" type="email" placeholder="name@example.com" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required defaultValue="password" />
+              <Input id="password" name="password" type="password" required />
             </div>
              {!isLogin && (
                 <div className="space-y-2">
