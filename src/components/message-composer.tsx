@@ -13,7 +13,12 @@ import { Label } from './ui/label';
 
 const MAX_CHARS = 160;
 
-export function MessageComposer() {
+interface MessageComposerProps {
+    selectedContacts: string[];
+    selectedGroups: string[];
+}
+
+export function MessageComposer({ selectedContacts, selectedGroups }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [senderId, setSenderId] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -39,6 +44,9 @@ export function MessageComposer() {
   };
 
   const handleSend = async (formData: FormData) => {
+    selectedContacts.forEach(id => formData.append('selectedContacts', id));
+    selectedGroups.forEach(id => formData.append('selectedGroups', id));
+
     startTransition(async () => {
       const result = await sendSms(formData);
       if (result.success) {

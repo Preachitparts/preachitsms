@@ -22,7 +22,8 @@ export interface Group {
 export interface SmsRecord {
   id: string;
   senderId?: string;
-  recipient: string;
+  recipientCount: number;
+  recipientGroups?: string[];
   message: string;
   status: 'Sent' | 'Failed' | 'Pending';
   date: string;

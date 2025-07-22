@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -14,12 +15,14 @@ import { Button } from './ui/button';
 interface ContactSelectorProps {
   contacts: Contact[];
   groups: Group[];
+  selectedContacts: Set<string>;
+  setSelectedContacts: React.Dispatch<React.SetStateAction<Set<string>>>;
+  selectedGroups: Set<string>;
+  setSelectedGroups: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
-export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
+export function ContactSelector({ contacts, groups, selectedContacts, setSelectedContacts, selectedGroups, setSelectedGroups }: ContactSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
-  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
 
   const filteredContacts = useMemo(() =>
     contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())),
@@ -55,7 +58,23 @@ export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
     });
   };
 
-  const totalRecipients = selectedContacts.size + selectedGroups.size;
+  const totalRecipients = useMemo(() => {
+    let count = selectedContacts.size;
+    const allGroupMembers = new Set<string>();
+
+    selectedGroups.forEach(groupId => {
+        const group = groups.find(g => g.id === groupId);
+        if (group && group.members) {
+            group.members.forEach(memberId => allGroupMembers.add(memberId));
+        }
+    });
+
+    const uniqueGroupMembers = Array.from(allGroupMembers).filter(memberId => !selectedContacts.has(memberId));
+    count += uniqueGroupMembers.length;
+    
+    return count;
+  }, [selectedContacts, selectedGroups, groups]);
+
   const contactMap = useMemo(() => new Map(contacts.map(c => [c.id, c.name])), [contacts]);
   const groupMap = useMemo(() => new Map(groups.map(g => [g.id, g.name])), [groups]);
 

@@ -3,12 +3,14 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc, getDocs } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
   senderId: z.string().min(1, 'Sender ID cannot be empty.').max(11, 'Sender ID cannot be more than 11 characters.'),
   message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message is too long.'),
+  selectedContacts: z.array(z.string()),
+  selectedGroups: z.array(z.string()),
 });
 
 export async function sendSms(formData: FormData) {
@@ -16,16 +18,40 @@ export async function sendSms(formData: FormData) {
     const parsed = smsSchema.safeParse({
       senderId: formData.get('senderId'),
       message: formData.get('message'),
+      selectedContacts: formData.getAll('selectedContacts'),
+      selectedGroups: formData.getAll('selectedGroups'),
     });
 
     if (!parsed.success) {
       return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { message, senderId } = parsed.data;
+    const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
+
+    let recipientCount = selectedContacts.length;
+    let recipientGroups: string[] = [];
+
+    if (selectedGroups.length > 0) {
+        const groupsSnapshot = await getDocs(collection(db, 'groups'));
+        const groupMap = new Map(groupsSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
+        const allGroupMembers = new Set<string>();
+
+        selectedGroups.forEach(groupId => {
+            const group = groupMap.get(groupId);
+            if (group && group.members) {
+                group.members.forEach((memberId: string) => allGroupMembers.add(memberId));
+                recipientGroups.push(group.name);
+            }
+        });
+        
+        const uniqueGroupMembers = Array.from(allGroupMembers).filter(memberId => !selectedContacts.includes(memberId));
+        recipientCount += uniqueGroupMembers.length;
+    }
+
 
     // TODO: This should be replaced with actual Hubtel API call
-    console.log('Sending SMS From:', senderId, 'Message:', message);
+    console.log('Sending SMS From:', senderId, 'Message:', message, 'to', recipientCount, 'recipients');
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     if (message.toLowerCase().includes('fail')) {
@@ -35,7 +61,8 @@ export async function sendSms(formData: FormData) {
     // Add to history
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
-      recipient: 'Selected Recipients', // This needs to be implemented
+      recipientCount,
+      recipientGroups,
       message,
       status: 'Sent',
       date: new Date().toISOString().split('T')[0],
@@ -50,7 +77,8 @@ export async function sendSms(formData: FormData) {
     
     await addDoc(collection(db, 'smsHistory'), {
       senderId: formData.get('senderId'),
-      recipient: 'Selected Recipients', // This needs to be implemented
+      recipientCount: 0,
+      recipientGroups: [],
       message: formData.get('message'),
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
@@ -62,6 +90,29 @@ export async function sendSms(formData: FormData) {
     return { success: false, error: error instanceof Error ? error.message : 'An unknown error occurred.' };
   }
 }
+
+export async function deleteSmsHistory(ids: string[]) {
+    try {
+        if (!ids || ids.length === 0) {
+            return { success: false, error: 'No history records selected.' };
+        }
+
+        const batch = writeBatch(db);
+        ids.forEach(id => {
+            const docRef = doc(db, 'smsHistory', id);
+            batch.delete(docRef);
+        });
+
+        await batch.commit();
+
+        revalidatePath('/history');
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting history:", error);
+        return { success: false, error: 'An unexpected error occurred.' };
+    }
+}
+
 
 const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
