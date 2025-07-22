@@ -5,12 +5,9 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
-
-// This file contains server-side actions for authentication with Firebase.
-// We are using Firebase Auth for user management.
 
 export interface Admin {
   uid: string;
@@ -18,6 +15,7 @@ export interface Admin {
   fullName: string;
   canSeeSettings: boolean;
   photoURL?: string;
+  status?: 'invited' | 'registered';
 }
 
 const firebaseConfig = {
@@ -30,7 +28,6 @@ const firebaseConfig = {
   measurementId: "G-4DY8CQ02RS"
 };
 
-// Initialize Firebase app if not already initialized
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
@@ -55,30 +52,28 @@ export async function signup(formData: FormData) {
     const { email, password, fullName } = parsed.data;
     
     try {
-        // Check if there is a pre-invited admin record
-        const q = query(collection(db, 'admins'), where('email', '==', email));
-        const querySnapshot = await getDocs(q);
-
+        const adminsCollectionRef = collection(db, 'admins');
+        const adminsSnapshot = await getDocs(adminsCollectionRef);
+        const isFirstAdmin = adminsSnapshot.empty;
         let canSeeSettings = false;
-        let invitedDocId: string | null = null;
         let isInvited = false;
-        
-        if (!querySnapshot.empty) {
+        let invitedDocId: string | null = null;
+
+        if (isFirstAdmin) {
+            canSeeSettings = true;
+        } else {
+            const q = query(adminsCollectionRef, where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                 return { error: "This email is not invited. Please contact an administrator." };
+            }
             const invitedDoc = querySnapshot.docs[0];
             if (invitedDoc.data().status === 'registered') {
                 return { error: "This email is already registered." };
             }
             canSeeSettings = invitedDoc.data().canSeeSettings;
-            invitedDocId = invitedDoc.id;
             isInvited = true;
-        } else {
-             // If not invited, check if this is the very first admin signup
-            const adminsSnapshot = await getDocs(collection(db, 'admins'));
-            if (adminsSnapshot.empty) {
-                canSeeSettings = true; // First user is super admin
-            } else {
-                 return { error: "This email is not invited. Please contact an administrator." };
-            }
+            invitedDocId = invitedDoc.id;
         }
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -89,23 +84,17 @@ export async function signup(formData: FormData) {
             email: user.email,
             fullName,
             canSeeSettings,
-            status: 'registered',
+            status: 'registered' as const,
         };
 
         if (isInvited && invitedDocId) {
-            // If the user was invited, we update their invitation record with the new details.
-            // Using a write batch to ensure atomicity if needed, though a simple update is also fine.
-            const batch = writeBatch(db);
-            const adminRef = doc(db, "admins", invitedDocId);
-            batch.update(adminRef, adminData);
-            await batch.commit();
+             await updateDoc(doc(db, "admins", invitedDocId), adminData);
         } else {
-            // This path is for the very first admin. We create a new doc with their UID.
             await setDoc(doc(db, 'admins', user.uid), adminData);
         }
+        
+        return { success: true };
 
-        // We are not logging the user in automatically after signup for security.
-        return { error: null, success: true };
     } catch (e: any) {
         if (e.code === 'auth/email-already-in-use') {
             return { error: 'This email is already registered.' };
@@ -131,7 +120,6 @@ export async function login(formData: FormData) {
         const { user } = await signInWithEmailAndPassword(auth, email, password);
         const idToken = await user.getIdToken();
 
-        // Set session cookie
         cookies().set('firebaseIdToken', idToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -139,7 +127,7 @@ export async function login(formData: FormData) {
             path: '/',
         });
         
-        return { error: null };
+        return { success: true };
     } catch (e: any) {
          return { error: 'Invalid email or password.' };
     }
@@ -150,7 +138,7 @@ export async function logout() {
     redirect('/login');
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<Admin | null> {
     const idToken = cookies().get('firebaseIdToken')?.value;
 
     if (!idToken) {
@@ -158,51 +146,34 @@ export async function getCurrentUser() {
     }
 
     try {
-        // This is an insecure way to get the UID on the server.
-        // In a production app, you MUST verify the token using the Firebase Admin SDK.
-        // For this environment, we are decoding it without verification.
+        // In a real production app, you MUST verify the token using the Firebase Admin SDK
+        // to prevent token tampering. For this dev environment, we decode it.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
-        if (!uid) {
-            return null;
-        }
+        if (!uid) return null;
 
-        // Try fetching admin doc by UID first. This is the most common case.
-        let adminDocRef = doc(db, 'admins', uid);
-        let adminDoc = await getDoc(adminDocRef);
+        // The user's doc in 'admins' should be keyed by their UID.
+        const adminDocRef = doc(db, 'admins', uid);
+        const adminDoc = await getDoc(adminDocRef);
 
         if (adminDoc.exists()) {
-            return {
-                uid: uid,
-                ...adminDoc.data()
-            } as Admin;
+            return { uid, ...adminDoc.data() } as Admin;
         }
-    
-        // If not found by UID, they might be an invited user whose doc ID is not yet the UID.
-        // This is a fallback and should be less common after the first login.
-        const email = decodedToken.email;
-        if (email) {
-            const q = query(collection(db, 'admins'), where('email', '==', email), where('status', '==', 'registered'));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                const doc = querySnapshot.docs[0];
-                return {
-                    uid: doc.data().uid || doc.id,
-                    ...doc.data()
-                } as Admin
-            }
-        }
-        
-        // If we reach here, the user is authenticated with Firebase but has no admin record.
-        // This could be a security concern or an edge case. For now, we deny access.
+
+        // Fallback for invited users whose doc ID might not be UID yet (should be rare)
+         const q = query(collection(db, 'admins'), where('email', '==', decodedToken.email), where('status', '==', 'registered'));
+         const querySnapshot = await getDocs(q);
+         if (!querySnapshot.empty) {
+             const doc = querySnapshot.docs[0];
+             return { uid: doc.data().uid || doc.id, ...doc.data() } as Admin;
+         }
+
         console.warn(`User with UID ${uid} is authenticated but not found in 'admins' collection.`);
-        cookies().delete('firebaseIdToken');
         return null;
 
     } catch(e) {
         console.error("Failed to decode token or fetch user", e);
-        // If token is invalid, clear the cookie
         cookies().delete('firebaseIdToken');
         return null;
     }

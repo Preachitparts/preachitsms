@@ -31,7 +31,7 @@ export default function LoginPage() {
           title: 'Authentication Failed',
           description: result.error,
         });
-      } else {
+      } else if (result.success) {
         if (isLogin) {
           toast({
             title: 'Success!',
@@ -42,9 +42,9 @@ export default function LoginPage() {
         } else {
             toast({
                 title: 'Account Created!',
-                description: 'Your admin account has been created. Please sign in to continue.',
+                description: 'Your account has been created. Please sign in to continue.',
             });
-          setIsLogin(true); // Switch to login view after signup
+          setIsLogin(true);
           (event.target as HTMLFormElement).reset();
         }
       }
@@ -60,7 +60,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="font-headline text-3xl">Preach It SMS</CardTitle>
           <CardDescription>
-            {isLogin ? 'Sign in to your account' : 'Create the first admin account'}
+            {isLogin ? 'Sign in to your account' : 'Create an administrator account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,13 +92,15 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex-col gap-4">
-            <button
+            <Button
+                variant="link"
+                type="button"
                 onClick={() => setIsLogin(!isLogin)}
                 className="text-sm text-primary hover:underline"
                 disabled={isPending}
             >
                 {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
+            </Button>
             {isLogin && (
                  <Link
                     href="/forgot-password"

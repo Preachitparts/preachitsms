@@ -41,17 +41,22 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const fetchUser = async () => {
+      setLoading(true);
       const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      if (!currentUser) {
+        // This can happen if the cookie is stale.
+        // Redirecting to login will clear the cookie via middleware.
+        router.push('/login');
+      } else {
+        setUser(currentUser);
+      }
       setLoading(false);
     };
     fetchUser();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     await logout();
-    router.push('/login');
-    router.refresh();
   };
 
   const getPageTitle = () => {
@@ -72,6 +77,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   };
 
   const getInitials = (name: string) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
 
@@ -134,7 +140,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <SidebarFooter>
           {loading ? (
             <div className="flex items-center gap-2 p-2">
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+                <div className="hidden group-data-[state=expanded]:flex flex-col gap-1 w-32">
+                  <div className="h-4 w-full rounded-md bg-muted animate-pulse"></div>
+                  <div className="h-3 w-3/4 rounded-md bg-muted animate-pulse"></div>
+                </div>
             </div>
           ) : (
             <DropdownMenu>
@@ -145,8 +155,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     <AvatarFallback>{user?.fullName ? getInitials(user.fullName) : 'AD'}</AvatarFallback>
                   </Avatar>
                   <div className="hidden text-left group-data-[state=expanded]:block">
-                    <p className="text-sm font-medium">{user?.fullName}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium truncate">{user?.fullName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
@@ -169,6 +179,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </>
   )
 
+  if (loading) {
+    return (
+        <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <SidebarProvider>
