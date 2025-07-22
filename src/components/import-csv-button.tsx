@@ -41,7 +41,7 @@ export function ImportCsvButton() {
             toast({ variant: 'destructive', title: 'Invalid CSV', description: 'CSV file must have a header row and at least one data row.' });
             return;
         }
-        const headers = lines[0].split(',').map(h => h.trim());
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         const requiredHeaders = ['name', 'phone', 'location'];
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -77,8 +77,8 @@ export function ImportCsvButton() {
       const result = await importMembersFromCSV(parsedData);
       if (result.success) {
         toast({
-          title: 'Success!',
-          description: `${result.count} members imported from CSV.`,
+          title: 'Import Successful!',
+          description: `${result.created} members created, ${result.updated} members updated.`,
         });
         setOpen(false);
         setFileName('');
@@ -106,7 +106,7 @@ export function ImportCsvButton() {
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Select a CSV file with columns: name, phone, location. The first row must be the header.
+            Select a CSV file with columns: name, phone, location, and optionally group. The first row must be the header.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

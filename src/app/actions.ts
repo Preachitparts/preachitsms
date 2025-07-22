@@ -498,11 +498,12 @@ const csvMemberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   phone: z.string().min(1, 'Phone is required'),
   location: z.string().min(1, 'Location is required'),
+  group: z.string().optional(),
 });
 
 const importCsvSchema = z.array(csvMemberSchema);
 
-export async function importMembersFromCSV(contacts: { name: string, phone: string, location: string }[]) {
+export async function importMembersFromCSV(contacts: { name: string, phone: string, location: string, group?: string }[]) {
     try {
         const parsed = importCsvSchema.safeParse(contacts);
         if (!parsed.success) {
@@ -512,21 +513,53 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         }
 
         const batch = writeBatch(db);
+        let updatedCount = 0;
+        let createdCount = 0;
+        
+        // Fetch existing contacts and groups for efficient lookup
+        const contactsSnapshot = await getDocs(collection(db, 'contacts'));
+        const existingContactsByPhone = new Map(contactsSnapshot.docs.map(doc => [doc.data().phone, { id: doc.id, ...doc.data() }]));
 
-        parsed.data.forEach(contact => {
-            const newMemberRef = doc(collection(db, 'contacts'));
-            batch.set(newMemberRef, { 
-                name: contact.name, 
+        const groupsSnapshot = await getDocs(collection(db, 'groups'));
+        const existingGroupsByName = new Map(groupsSnapshot.docs.map(doc => [doc.data().name.toLowerCase(), doc.id]));
+
+        for (const contact of parsed.data) {
+            const existingContact = existingContactsByPhone.get(contact.phone);
+            
+            let groupIds: string[] = [];
+            if (contact.group) {
+                const groupId = existingGroupsByName.get(contact.group.toLowerCase());
+                if (groupId) {
+                    groupIds.push(groupId);
+                }
+            }
+
+            const contactData = {
+                name: contact.name,
                 phone: contact.phone,
                 location: contact.location,
-                groups: [] 
-            });
-        });
+                groups: groupIds,
+            };
+
+            if (existingContact) {
+                // Update existing contact
+                const contactRef = doc(db, 'contacts', existingContact.id);
+                batch.update(contactRef, contactData);
+                updatedCount++;
+            } else {
+                // Create new contact
+                const newMemberRef = doc(collection(db, 'contacts'));
+                batch.set(newMemberRef, contactData);
+                createdCount++;
+            }
+        }
         
         await batch.commit();
 
         revalidatePath('/members');
-        return { success: true, count: parsed.data.length };
+        revalidatePath('/groups');
+
+        return { success: true, count: parsed.data.length, created: createdCount, updated: updatedCount };
 
     } catch (error) {
         console.error("Error importing members from CSV:", error);
