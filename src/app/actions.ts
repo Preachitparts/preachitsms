@@ -26,8 +26,8 @@ export async function sendSms(formData: FormData) {
   let smsData = {
       senderId: formData.get('senderId') as string,
       message: formData.get('message') as string,
-      selectedContacts: formData.getAll('selectedContacts') as string[],
-      selectedGroups: formData.getAll('selectedGroups') as string[]
+      selectedContacts: formData.getAll('selectedContacts').map(String),
+      selectedGroups: formData.getAll('selectedGroups').map(String)
   };
 
   try {
@@ -44,11 +44,18 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
     }
 
-    const contactsSnapshot = await getDocs(collection(db, 'contacts'));
-    const contactMap = new Map(contactsSnapshot.docs.map(doc => [doc.id, doc.data()]));
-    
-    let allRecipientNumbers = new Set<string>();
+    // 1. Fetch all contacts and groups once to create lookup maps.
+    const [contactsSnapshot, groupsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'contacts')),
+        getDocs(collection(db, 'groups'))
+    ]);
+    const contactMap = new Map(contactsSnapshot.docs.map(d => [d.id, d.data()]));
+    const groupMap = new Map(groupsSnapshot.docs.map(d => [d.id, d.data()]));
 
+    // 2. Use a Set to automatically handle duplicate phone numbers.
+    const allRecipientNumbers = new Set<string>();
+
+    // 3. Add numbers from individually selected contacts.
     selectedContacts.forEach(contactId => {
         const contact = contactMap.get(contactId);
         if (contact?.phone) {
@@ -56,36 +63,33 @@ export async function sendSms(formData: FormData) {
         }
     });
 
-    if (selectedGroups.length > 0) {
-        const groupsSnapshot = await getDocs(collection(db, 'groups'));
-        const groupMap = new Map(groupsSnapshot.docs.map(doc => [doc.id, doc.data()]));
+    // 4. Add numbers from members of selected groups.
+    selectedGroups.forEach(groupId => {
+        const group = groupMap.get(groupId);
+        if (group?.members) {
+            group.members.forEach((memberId: string) => {
+                const member = contactMap.get(memberId);
+                if (member?.phone) {
+                    allRecipientNumbers.add(member.phone);
+                }
+            });
+        }
+    });
 
-        selectedGroups.forEach(groupId => {
-            const group = groupMap.get(groupId);
-            if (group && group.members) {
-                group.members.forEach((memberId: string) => {
-                    const member = contactMap.get(memberId);
-                    if (member?.phone) {
-                        allRecipientNumbers.add(member.phone);
-                    }
-                });
-            }
-        });
-    }
 
     if (allRecipientNumbers.size === 0) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
-    const recipientCount = allRecipientNumbers.size;
+    // Convert Set to Array for the API call
+    const recipientsArray = Array.from(allRecipientNumbers);
+    const recipientCount = recipientsArray.length;
+    
     const recipientGroupsNames = selectedGroups.length > 0 
-      ? (await Promise.all(selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
-          .map(d => d.data()?.name)
-          .filter(Boolean)
+      ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
     
     const authHeader = `Basic ${Buffer.from(`${apiKeys.clientId}:${apiKeys.clientSecret}`).toString('base64')}`;
-    const recipientsArray = Array.from(allRecipientNumbers);
     
     const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send`, {
         method: 'POST',
@@ -95,7 +99,7 @@ export async function sendSms(formData: FormData) {
         },
         body: JSON.stringify({
             From: senderId,
-            To: recipientsArray,
+            To: recipientsArray, // API requires an array of strings
             Content: message,
         })
     });
@@ -139,7 +143,7 @@ export async function sendSms(formData: FormData) {
 
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
-      recipientCount: 0,
+      recipientCount: 0, 
       recipientGroups: recipientGroupsNames,
       message: smsData.message,
       status: 'Failed',
