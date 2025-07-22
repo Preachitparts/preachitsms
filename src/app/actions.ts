@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
@@ -63,6 +63,7 @@ const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   phone: z.string().regex(/^233\d{9}$/, 'Phone number must be a valid Ghanaian number (e.g., 233241234567).'),
   location: z.string().min(2, 'Location must be at least 2 characters.'),
+  groups: z.array(z.string()).optional(),
 });
 
 
@@ -72,21 +73,30 @@ export async function addMember(prevState: any, formData: FormData) {
       name: formData.get('name'),
       phone: formData.get('phone'),
       location: formData.get('location'),
+      groups: formData.getAll('groups'),
     });
 
     if (!parsed.success) {
       return { success: false, error: parsed.error.format() };
     }
     
-    const { name, phone, location } = parsed.data;
+    const { name, phone, location, groups = [] } = parsed.data;
 
-    await addDoc(collection(db, 'contacts'), {
-      name,
-      phone,
-      location
-    });
+    const batch = writeBatch(db);
+
+    const newMemberRef = doc(collection(db, 'contacts'));
+    batch.set(newMemberRef, { name, phone, location, groups });
+
+    for (const groupId of groups) {
+      const groupRef = doc(db, 'groups', groupId);
+      batch.update(groupRef, { members: arrayUnion(newMemberRef.id) });
+    }
+    
+    await batch.commit();
+
 
     revalidatePath('/members');
+    revalidatePath('/groups');
     return { success: true };
 
   } catch (error) {
@@ -106,16 +116,42 @@ export async function updateMember(prevState: any, formData: FormData) {
             name: formData.get('name'),
             phone: formData.get('phone'),
             location: formData.get('location'),
+            groups: formData.getAll('groups'),
         });
 
         if (!parsed.success) {
             return { success: false, error: parsed.error.format() };
         }
 
-        const { id, name, phone, location } = parsed.data;
+        const { id, name, phone, location, groups = [] } = parsed.data;
 
+        const batch = writeBatch(db);
         const memberRef = doc(db, 'contacts', id);
-        await updateDoc(memberRef, { name, phone, location });
+
+        // Get the current groups of the member
+        const memberDoc = await getDoc(memberRef);
+        const currentGroups = memberDoc.data()?.groups || [];
+
+        const groupsToAdd = groups.filter(g => !currentGroups.includes(g));
+        const groupsToRemove = currentGroups.filter((g: string) => !groups.includes(g));
+
+        // Update the member document
+        batch.update(memberRef, { name, phone, location, groups });
+
+        // Add member to new groups
+        for (const groupId of groupsToAdd) {
+          const groupRef = doc(db, 'groups', groupId);
+          batch.update(groupRef, { members: arrayUnion(id) });
+        }
+        
+        // Remove member from old groups
+        for (const groupId of groupsToRemove) {
+          const groupRef = doc(db, 'groups', groupId);
+          batch.update(groupRef, { members: arrayRemove(id) });
+        }
+        
+        await batch.commit();
+
 
         revalidatePath('/members');
         revalidatePath('/groups');
@@ -136,7 +172,20 @@ export async function deleteMember(formData: FormData) {
             return { success: false, error: 'Member ID is missing.' };
         }
 
-        await deleteDoc(doc(db, 'contacts', id));
+        const batch = writeBatch(db);
+        const memberRef = doc(db, 'contacts', id);
+
+        // Get the member's groups to remove them from those groups
+        const memberDoc = await getDoc(memberRef);
+        const groups = memberDoc.data()?.groups || [];
+        for (const groupId of groups) {
+          const groupRef = doc(db, 'groups', groupId);
+          batch.update(groupRef, { members: arrayRemove(id) });
+        }
+
+        batch.delete(memberRef);
+
+        await batch.commit();
 
         revalidatePath('/members');
         revalidatePath('/groups');

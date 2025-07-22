@@ -7,14 +7,17 @@ import { MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Contact } from '@/lib/data';
+import type { Contact, Group } from '@/lib/data';
 import { EditMemberButton } from './edit-member-button';
 import { DeleteMemberButton } from './delete-member-button';
 
-export function MembersTable({ members }: { members: Contact[] }) {
+interface MemberWithGroupNames extends Contact {
+    groupNames?: string;
+}
+
+export function MembersTable({ members, allGroups }: { members: MemberWithGroupNames[], allGroups: Group[] }) {
     if (members.length === 0) {
         return (
             <div className="text-center text-muted-foreground py-10">
@@ -31,6 +34,7 @@ export function MembersTable({ members }: { members: Contact[] }) {
           <TableHead>Name</TableHead>
           <TableHead>Phone</TableHead>
           <TableHead>Location</TableHead>
+          <TableHead>Groups</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -40,6 +44,7 @@ export function MembersTable({ members }: { members: Contact[] }) {
             <TableCell className="font-medium">{member.name}</TableCell>
             <TableCell>{member.phone}</TableCell>
             <TableCell>{member.location}</TableCell>
+            <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
             <TableCell className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -48,7 +53,7 @@ export function MembersTable({ members }: { members: Contact[] }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <EditMemberButton member={member} />
+                  <EditMemberButton member={member} groups={allGroups} />
                   <DeleteMemberButton memberId={member.id} />
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -31,7 +31,7 @@ export interface SmsRecord {
 export async function getContacts(): Promise<Contact[]> {
   try {
     const contactsCol = collection(db, 'contacts');
-    const contactsSnapshot = await getDocs(contactsCol);
+    const contactsSnapshot = await getDocs(query(contactsCol, orderBy('name')));
     const contactsList = contactsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -46,7 +46,7 @@ export async function getContacts(): Promise<Contact[]> {
 export async function getGroups(): Promise<Group[]> {
   try {
     const groupsCol = collection(db, 'groups');
-    const groupsSnapshot = await getDocs(groupsCol);
+    const groupsSnapshot = await getDocs(query(groupsCol, orderBy('name')));
     
     const groupsList = groupsSnapshot.docs.map(doc => {
       const groupData = doc.data();
@@ -56,6 +56,7 @@ export async function getGroups(): Promise<Group[]> {
         description: groupData.description,
         color: groupData.color,
         members: groupData.members || [],
+        memberCount: groupData.members?.length || 0,
       } as Group
     });
 

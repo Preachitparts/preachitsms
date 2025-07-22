@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageSquareText, LayoutDashboard, History, LogOut, Users, Folder, Settings } from 'lucide-react';
+import { MessageSquareText, LayoutDashboard, History, LogOut, Users, Folder, Settings, Moon, Sun } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +26,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTheme } from 'next-themes';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { setTheme, theme } = useTheme();
+  const isMobile = useIsMobile();
 
   const getPageTitle = () => {
     switch (pathname) {
@@ -137,10 +142,15 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
-          <SidebarTrigger className="md:hidden" />
-          <h2 className="text-xl font-headline font-semibold">
+          <SidebarTrigger className={isMobile ? 'flex' : 'hidden md:flex'} />
+          <h2 className="text-xl font-headline font-semibold flex-1">
             {getPageTitle()}
           </h2>
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">
           {children}

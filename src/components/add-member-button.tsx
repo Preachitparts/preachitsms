@@ -18,6 +18,9 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { addMember } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { type Group } from '@/lib/data';
+import { MultiSelect } from './ui/multi-select';
+
 
 const initialState = {
   error: null,
@@ -34,11 +37,14 @@ function SubmitButton() {
   );
 }
 
-export function AddMemberButton() {
+export function AddMemberButton({ groups }: { groups: Group[] }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(addMember, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+
+  const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
   useEffect(() => {
     if (state.success) {
@@ -48,6 +54,7 @@ export function AddMemberButton() {
       });
       setOpen(false);
       formRef.current?.reset();
+      setSelectedGroups([]);
     } else if (state.error) {
        const errors = Object.values(state.error).flat().join(', ');
         toast({
@@ -61,6 +68,7 @@ export function AddMemberButton() {
   const onOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
         formRef.current?.reset();
+        setSelectedGroups([]);
     }
     setOpen(isOpen);
   }
@@ -96,6 +104,19 @@ export function AddMemberButton() {
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" name="location" />
                 {state.error?.location && <p className="text-destructive text-sm">{state.error.location[0]}</p>}
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="groups">Groups</Label>
+                 <MultiSelect
+                    options={groupOptions}
+                    onValueChange={setSelectedGroups}
+                    defaultValue={[]}
+                    placeholder="Select groups..."
+                    
+                />
+                {selectedGroups.map(group => (
+                    <input type="hidden" name="groups" key={group} value={group} />
+                ))}
             </div>
             <DialogFooter>
                 <SubmitButton />
