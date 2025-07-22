@@ -114,7 +114,7 @@ export async function sendSms(formData: FormData) {
     }
 
 
-    if (!hubtelResponse.ok || hubtelResult.status !== 0) {
+    if (hubtelResult.status !== 0) {
          console.error("Hubtel API Error:", hubtelResult);
          throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed with status ${hubtelResult.status}.`);
     }
@@ -538,3 +538,5 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
+
+    
