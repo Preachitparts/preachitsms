@@ -24,29 +24,24 @@ export default function LoginPage() {
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
+      // The login action now handles the redirect, so we don't need to do it here.
+      // We only need to handle the response if there's an error.
       const result = isLogin ? await login(formData) : await signup(formData);
 
-      if (result.error) {
+      if (result?.error) {
         toast({
           variant: 'destructive',
           title: 'Authentication Failed',
           description: result.error,
         });
-      } else if (result.success) {
-        if (isLogin) {
-          toast({
-            title: 'Success!',
-            description: 'You are now logged in.',
-          });
-          router.push('/');
-        } else {
-            toast({
-                title: 'Account Created!',
-                description: 'Your account has been created. Please sign in to continue.',
-            });
-          setIsLogin(true);
-          (event.target as HTMLFormElement).reset();
-        }
+      } else if (result?.success) {
+        // This part is for signup success
+        toast({
+            title: 'Account Created!',
+            description: 'Your account has been created. Please sign in to continue.',
+        });
+        setIsLogin(true);
+        (event.target as HTMLFormElement).reset();
       }
     });
   };

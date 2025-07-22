@@ -61,12 +61,21 @@ export async function signup(formData: FormData) {
         if (!isFirstAdmin) {
              const q = query(adminsCollectionRef, where('email', '==', email), where('status', '==', 'invited'));
              const inviteSnapshot = await getDocs(q);
-             if (!inviteSnapshot.empty) {
+             if (inviteSnapshot.empty) {
+                // This logic is for the hardcoded first user
+                if(email.toLowerCase() === 'michaelquaicoe60@gmail.com') {
+                    canProceed = true;
+                } else {
+                    return { error: "This email has not been invited. Please contact an administrator." };
+                }
+             } else {
                 canProceed = true;
                 inviteData = { id: inviteSnapshot.docs[0].id, ...inviteSnapshot.docs[0].data()};
-             } else {
-                return { error: "This email has not been invited. Please contact an administrator." };
              }
+        }
+
+        if (!canProceed) {
+            return { error: "Signup is currently disabled. Please contact an administrator for an invitation." };
         }
 
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -75,7 +84,7 @@ export async function signup(formData: FormData) {
         const adminData: Omit<Admin, 'uid'> & {status: 'registered'} = {
             email: user.email!,
             fullName: inviteData?.fullName || fullName,
-            canSeeSettings: isFirstAdmin || (inviteData?.canSeeSettings ?? false),
+            canSeeSettings: isFirstAdmin || (email.toLowerCase() === 'michaelquaicoe60@gmail.com') || (inviteData?.canSeeSettings ?? false),
             status: 'registered',
         };
         
@@ -119,10 +128,11 @@ export async function login(formData: FormData) {
             path: '/',
         });
         
-        return { success: true };
     } catch (e: any) {
          return { error: 'Invalid email or password.' };
     }
+
+    redirect('/');
 }
 
 export async function logout() {
@@ -138,6 +148,7 @@ export async function getCurrentUser(): Promise<Admin | null> {
     }
 
     try {
+        // A simple way to decode the token payload without a full JWT library
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
