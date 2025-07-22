@@ -22,25 +22,47 @@ export async function sendSms(formData: FormData) {
 
     const { message } = parsed.data;
 
+    // TODO: This should be replaced with actual Hubtel API call
     console.log('Sending SMS:', message);
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     if (message.toLowerCase().includes('fail')) {
         throw new Error('Hubtel API simulation failed.');
     }
+    
+    // Add to history
+    await addDoc(collection(db, 'smsHistory'), {
+      recipient: 'Selected Recipients', // This needs to be implemented
+      message,
+      status: 'Sent',
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date(),
+    });
+
+    revalidatePath('/history');
 
     return { success: true };
   } catch (error) {
     console.error('SMS sending error:', error);
+    
+    await addDoc(collection(db, 'smsHistory'), {
+      recipient: 'Selected Recipients', // This needs to be implemented
+      message: formData.get('message'),
+      status: 'Failed',
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date(),
+    });
+
+    revalidatePath('/history');
+
     return { success: false, error: error instanceof Error ? error.message : 'An unknown error occurred.' };
   }
 }
 
 const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
-  phone: z.string().min(10, 'Please enter a valid phone number.'),
-  email: z.string().email('Please enter a valid email.').optional().or(z.literal('')),
-  groups: z.array(z.string()).min(1, 'Please select at least one group.'),
+  phone: z.string().regex(/^233\d{9}$/, 'Phone number must be a valid Ghanaian number (e.g., 233241234567).'),
+  location: z.string().min(2, 'Location must be at least 2 characters.'),
 });
 
 
@@ -49,21 +71,19 @@ export async function addMember(prevState: any, formData: FormData) {
     const parsed = memberSchema.safeParse({
       name: formData.get('name'),
       phone: formData.get('phone'),
-      email: formData.get('email'),
-      groups: formData.getAll('groups'),
+      location: formData.get('location'),
     });
 
     if (!parsed.success) {
       return { success: false, error: parsed.error.format() };
     }
     
-    const { name, phone, email, groups } = parsed.data;
+    const { name, phone, location } = parsed.data;
 
     await addDoc(collection(db, 'contacts'), {
       name,
       phone,
-      email: email || '',
-      groups: groups || [],
+      location
     });
 
     revalidatePath('/members');
@@ -85,18 +105,17 @@ export async function updateMember(prevState: any, formData: FormData) {
             id: formData.get('id'),
             name: formData.get('name'),
             phone: formData.get('phone'),
-            email: formData.get('email'),
-            groups: formData.getAll('groups'),
+            location: formData.get('location'),
         });
 
         if (!parsed.success) {
             return { success: false, error: parsed.error.format() };
         }
 
-        const { id, name, phone, email, groups } = parsed.data;
+        const { id, name, phone, location } = parsed.data;
 
         const memberRef = doc(db, 'contacts', id);
-        await updateDoc(memberRef, { name, phone, email: email || '', groups: groups || [] });
+        await updateDoc(memberRef, { name, phone, location });
 
         revalidatePath('/members');
         revalidatePath('/groups');
@@ -153,6 +172,7 @@ export async function addGroup(prevState: any, formData: FormData) {
             name,
             description: description || '',
             color,
+            members: [],
         });
 
         revalidatePath('/groups');
@@ -202,9 +222,6 @@ export async function deleteGroup(formData: FormData) {
         if (!id) {
             return { success: false, error: 'Group ID is missing.' };
         }
-
-        // TODO: Handle members who are part of this group. 
-        // For now, we'll just delete the group.
         await deleteDoc(doc(db, 'groups', id));
 
         revalidatePath('/groups');
@@ -212,6 +229,41 @@ export async function deleteGroup(formData: FormData) {
         return { success: true };
     } catch (error) {
         console.error("Error deleting group:", error);
+        return { success: false, error: 'An unexpected error occurred.' };
+    }
+}
+
+// Settings Action
+const settingsSchema = z.object({
+    clientId: z.string().min(1, 'Client ID cannot be empty.'),
+    clientSecret: z.string().min(1, 'Client Secret cannot be empty.'),
+});
+
+export async function saveApiKeys(formData: FormData) {
+    try {
+        const parsed = settingsSchema.safeParse({
+            clientId: formData.get('clientId'),
+            clientSecret: formData.get('clientSecret'),
+        });
+
+        if (!parsed.success) {
+            return { success: false, error: parsed.error.format()._errors.join(', ') };
+        }
+
+        const { clientId, clientSecret } = parsed.data;
+
+        // In a real app, you would save these securely, e.g., in a secure backend or environment variables.
+        // For this demo, we'll just log them to the console to show they were received.
+        console.log('Saving API Keys...');
+        console.log('Client ID:', clientId);
+        console.log('Client Secret:', clientSecret.substring(0, 4) + '...');
+        
+        // Simulate saving
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving API keys:", error);
         return { success: false, error: 'An unexpected error occurred.' };
     }
 }

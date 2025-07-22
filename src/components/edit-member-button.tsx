@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useActionState } from 'react';
+import { useState, useEffect, useActionState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,9 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { updateMember } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import type { Contact, Group } from '@/lib/data';
+import type { Contact } from '@/lib/data';
 import { DropdownMenuItem } from './ui/dropdown-menu';
-import { MultiSelect } from './ui/multi-select';
 
 
 const initialState = {
@@ -38,14 +37,11 @@ function SubmitButton() {
   );
 }
 
-export function EditMemberButton({ member, groups }: { member: Contact, groups: Group[] }) {
+export function EditMemberButton({ member }: { member: Contact }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(updateMember, initialState);
   const { toast } = useToast();
-  const [selectedGroups, setSelectedGroups] = useState<string[]>(member.groups || []);
   const formRef = useRef<HTMLFormElement>(null);
-
-  const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
   useEffect(() => {
     if (state.success) {
@@ -67,7 +63,6 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
   const onOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
         formRef.current?.reset();
-        setSelectedGroups(member.groups || []);
     }
     setOpen(isOpen);
   }
@@ -87,47 +82,22 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
             Update the details of the member below. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction}>
+        <form ref={formRef} action={formAction} className="grid gap-4 py-4">
             <input type="hidden" name="id" value={member.id} />
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                    Name
-                    </Label>
-                    <Input id="name" name="name" defaultValue={member.name} className="col-span-3" />
-                </div>
-                 {state.error?.name && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.name[0]}</p>}
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="phone" className="text-right">
-                    Phone
-                    </Label>
-                    <Input id="phone" name="phone" defaultValue={member.phone} className="col-span-3" />
-                </div>
-                 {state.error?.phone && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.phone[0]}</p>}
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="email" className="text-right">
-                    Email
-                    </Label>
-                    <Input id="email" name="email" type="email" defaultValue={member.email} className="col-span-3" />
-                </div>
-                 {state.error?.email && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.email[0]}</p>}
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="groups" className="text-right">
-                        Groups
-                    </Label>
-                    <div className="col-span-3">
-                         <MultiSelect
-                            options={groupOptions}
-                            onValueChange={setSelectedGroups}
-                            defaultValue={selectedGroups}
-                            placeholder="Select groups..."
-                        />
-                        {selectedGroups.map(groupId => (
-                            <input type="hidden" name="groups" key={groupId} value={groupId} />
-                        ))}
-                    </div>
-                 </div>
-                 {state.error?.groups && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.groups[0]}</p>}
+             <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" defaultValue={member.name} />
+                {state.error?.name && <p className="text-destructive text-sm">{state.error.name[0]}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" name="phone" defaultValue={member.phone} />
+                {state.error?.phone && <p className="text-destructive text-sm">{state.error.phone[0]}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" name="location" defaultValue={member.location} />
+                {state.error?.location && <p className="text-destructive text-sm">{state.error.location[0]}</p>}
             </div>
             <DialogFooter>
                 <SubmitButton />

@@ -1,12 +1,12 @@
 
 import { db } from './firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, getDoc, doc } from 'firebase/firestore';
 
 export interface Contact {
   id: string;
   name: string;
   phone: string;
-  email?: string;
+  location?: string;
   groups?: string[];
 }
 
@@ -15,7 +15,8 @@ export interface Group {
   name: string;
   description?: string;
   color?: string;
-  memberCount?: number; // Optional, as it's calculated on the fly
+  memberCount?: number; 
+  members?: string[]; // Array of contact IDs
 }
 
 export interface SmsRecord {
@@ -24,6 +25,7 @@ export interface SmsRecord {
   message: string;
   status: 'Sent' | 'Failed' | 'Pending';
   date: string;
+  createdAt: any;
 }
 
 export async function getContacts(): Promise<Contact[]> {
@@ -53,6 +55,7 @@ export async function getGroups(): Promise<Group[]> {
         name: groupData.name,
         description: groupData.description,
         color: groupData.color,
+        members: groupData.members || [],
       } as Group
     });
 
@@ -63,13 +66,32 @@ export async function getGroups(): Promise<Group[]> {
   }
 }
 
+export async function getGroupsWithMemberCounts(): Promise<Group[]> {
+    const groups = await getGroups();
+    return groups.map(g => ({
+        ...g,
+        memberCount: g.members?.length || 0,
+    }))
+}
+
+
 export async function getSmsHistory(): Promise<SmsRecord[]> {
-  // Mock data for now
-  const smsHistory: SmsRecord[] = [
-    { id: '1', recipient: 'John Doe', message: 'Hello, this is a test message.', status: 'Sent', date: '2024-05-21' },
-    { id: '2', recipient: 'Jane Smith', message: 'Your appointment is confirmed.', status: 'Sent', date: '2024-05-20' },
-    { id: '3', recipient: 'Peter Jones', message: 'Failed to deliver message.', status: 'Failed', date: '2024-05-20' },
-    { id: '4', recipient: 'Mary Johnson', message: 'Your package is out for delivery.', status: 'Pending', date: '2024-05-21' },
-  ];
-  return smsHistory;
+  try {
+    const historyCol = collection(db, 'smsHistory');
+    const q = query(historyCol, orderBy('createdAt', 'desc'));
+    const historySnapshot = await getDocs(q);
+    
+    const historyList = historySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data
+      } as SmsRecord
+    });
+    
+    return historyList;
+  } catch (error) {
+    console.error("Error fetching SMS history: ", error);
+    return [];
+  }
 }

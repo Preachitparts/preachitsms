@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,9 +18,6 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { addMember } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Group } from '@/lib/data';
-import { MultiSelect } from './ui/multi-select';
-import { useRef } from 'react';
 
 const initialState = {
   error: null,
@@ -37,14 +34,11 @@ function SubmitButton() {
   );
 }
 
-export function AddMemberButton({ groups }: { groups: Group[] }) {
+export function AddMemberButton() {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(addMember, initialState);
   const { toast } = useToast();
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
-
-  const groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
 
   useEffect(() => {
     if (state.success) {
@@ -53,7 +47,6 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
         description: 'New member has been added.',
       });
       setOpen(false);
-      setSelectedGroups([]);
       formRef.current?.reset();
     } else if (state.error) {
        const errors = Object.values(state.error).flat().join(', ');
@@ -68,7 +61,6 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
   const onOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
         formRef.current?.reset();
-        setSelectedGroups([]);
     }
     setOpen(isOpen);
   }
@@ -89,46 +81,21 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
             Enter the details of the new member below. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction}>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                    Name
-                    </Label>
-                    <Input id="name" name="name" className="col-span-3" />
-                </div>
-                 {state.error?.name && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.name[0]}</p>}
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="phone" className="text-right">
-                    Phone
-                    </Label>
-                    <Input id="phone" name="phone" className="col-span-3" />
-                </div>
-                 {state.error?.phone && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.phone[0]}</p>}
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="email" className="text-right">
-                    Email
-                    </Label>
-                    <Input id="email" name="email" type="email" className="col-span-3" />
-                </div>
-                 {state.error?.email && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.email[0]}</p>}
-                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="groups" className="text-right">
-                        Groups
-                    </Label>
-                    <div className="col-span-3">
-                        <MultiSelect
-                            options={groupOptions}
-                            onValueChange={setSelectedGroups}
-                            defaultValue={[]}
-                            placeholder="Select groups..."
-                        />
-                        {selectedGroups.map(groupId => (
-                            <input type="hidden" name="groups" key={groupId} value={groupId} />
-                        ))}
-                    </div>
-                 </div>
-                 {state.error?.groups && <p className="col-start-2 col-span-3 text-destructive text-sm">{state.error.groups[0]}</p>}
+        <form ref={formRef} action={formAction} className="grid gap-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" />
+                {state.error?.name && <p className="text-destructive text-sm">{state.error.name[0]}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" name="phone" defaultValue="233" />
+                {state.error?.phone && <p className="text-destructive text-sm">{state.error.phone[0]}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" name="location" />
+                {state.error?.location && <p className="text-destructive text-sm">{state.error.location[0]}</p>}
             </div>
             <DialogFooter>
                 <SubmitButton />

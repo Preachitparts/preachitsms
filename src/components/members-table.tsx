@@ -10,12 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Contact, Group } from '@/lib/data';
+import type { Contact } from '@/lib/data';
 import { EditMemberButton } from './edit-member-button';
 import { DeleteMemberButton } from './delete-member-button';
-import { Badge } from './ui/badge';
 
-export function MembersTable({ members, groups }: { members: Contact[]; groups: Group[] }) {
+export function MembersTable({ members }: { members: Contact[] }) {
     if (members.length === 0) {
         return (
             <div className="text-center text-muted-foreground py-10">
@@ -25,18 +24,13 @@ export function MembersTable({ members, groups }: { members: Contact[]; groups: 
         )
     }
 
-  const getGroupNames = (groupIds: string[] = []) => {
-    return groupIds.map(id => groups.find(g => g.id === id)?.name).filter(Boolean);
-  }
-
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Phone</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Groups</TableHead>
+          <TableHead>Location</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -45,14 +39,7 @@ export function MembersTable({ members, groups }: { members: Contact[]; groups: 
           <TableRow key={member.id}>
             <TableCell className="font-medium">{member.name}</TableCell>
             <TableCell>{member.phone}</TableCell>
-            <TableCell>{member.email}</TableCell>
-            <TableCell>
-                <div className="flex flex-wrap gap-1">
-                    {getGroupNames(member.groups).map(name => (
-                        <Badge key={name} variant="secondary">{name}</Badge>
-                    ))}
-                </div>
-            </TableCell>
+            <TableCell>{member.location}</TableCell>
             <TableCell className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -61,7 +48,7 @@ export function MembersTable({ members, groups }: { members: Contact[]; groups: 
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <EditMemberButton member={member} groups={groups} />
+                  <EditMemberButton member={member} />
                   <DeleteMemberButton memberId={member.id} />
                 </DropdownMenuContent>
               </DropdownMenu>
