@@ -100,12 +100,12 @@ export async function sendSms(formData: FormData) {
         })
     });
     
-    const hubtelResultText = await hubtelResponse.text();
+    const hubtelResponseText = await hubtelResponse.text();
     let hubtelResult;
     try {
-        hubtelResult = JSON.parse(hubtelResultText);
+        hubtelResult = JSON.parse(hubtelResponseText);
     } catch(e) {
-        console.error("Hubtel API invalid JSON response:", hubtelResultText);
+        console.error("Hubtel API invalid JSON response:", hubtelResponseText);
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}`);
     }
 
@@ -534,3 +534,5 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
+
+    
