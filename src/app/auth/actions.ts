@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc, collectionGroup } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc, collectionGroup, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
 
@@ -79,10 +79,8 @@ export async function signup(formData: FormData) {
             status: 'registered',
         };
         
-        // Use the user's UID as the document ID for easy lookup
         await setDoc(doc(db, 'admins', user.uid), adminData);
         
-        // If this was an invite, delete the invite record
         if (inviteData?.id) {
             await deleteDoc(doc(db, 'admins', inviteData.id));
         }
@@ -140,14 +138,11 @@ export async function getCurrentUser(): Promise<Admin | null> {
     }
 
     try {
-        // In a real production app, you MUST verify the token using the Firebase Admin SDK
-        // to prevent token tampering. For this dev environment, we decode it.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
         if (!uid) return null;
 
-        // The user's doc in 'admins' should be keyed by their UID.
         const adminDocRef = doc(db, 'admins', uid);
         const adminDoc = await getDoc(adminDocRef);
 

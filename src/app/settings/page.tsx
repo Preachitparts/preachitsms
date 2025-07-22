@@ -54,7 +54,7 @@ export default function SettingsPage() {
 
     const unsub = onSnapshot(collection(db, 'admins'), (snapshot) => {
         const adminsData = snapshot.docs.map(doc => ({ 
-            uid: doc.data().uid || doc.id, 
+            uid: doc.id, 
             ...doc.data() 
         } as AdminDoc));
         setAdmins(adminsData);
