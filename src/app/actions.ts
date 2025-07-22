@@ -84,10 +84,10 @@ export async function sendSms(formData: FormData) {
           .filter(Boolean)
       : [];
     
-    // Use Basic Authentication as required by Hubtel API
     const authHeader = `Basic ${Buffer.from(`${apiKeys.clientId}:${apiKeys.clientSecret}`).toString('base64')}`;
+    const recipientsString = Array.from(allRecipientNumbers).join(',');
     
-    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?from=${senderId}&to=${Array.from(allRecipientNumbers).join(',')}&content=${encodeURIComponent(message)}`, {
+    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?from=${senderId}&to=${recipientsString}&content=${encodeURIComponent(message)}`, {
         method: 'GET',
         headers: {
             'Authorization': authHeader,
