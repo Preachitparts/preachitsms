@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getContacts, getGroups } from '@/lib/data';
 import { AddMemberButton } from '@/components/add-member-button';
 import { MembersClient } from '@/components/members-client';
-import { ImportContactsButton } from '@/components/import-contacts-button';
 import { ImportCsvButton } from '@/components/import-csv-button';
 
 export const revalidate = 0; // Ensure dynamic rendering
@@ -25,7 +24,6 @@ export default async function MembersPage() {
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <ImportCsvButton />
-            <ImportContactsButton />
             <AddMemberButton groups={initialGroups} />
           </div>
         </CardHeader>

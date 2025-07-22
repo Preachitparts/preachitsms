@@ -205,44 +205,6 @@ export async function addMember(prevState: any, formData: FormData) {
   }
 }
 
-const importedMemberSchema = z.object({
-  name: z.string().min(1),
-  phone: z.string().min(1),
-});
-
-const importMembersSchema = z.array(importedMemberSchema);
-
-export async function importMembers(contacts: { name: string, phone: string }[]) {
-    try {
-        const parsed = importMembersSchema.safeParse(contacts);
-        if (!parsed.success) {
-            return { success: false, error: 'Invalid contact format provided.' };
-        }
-
-        const batch = writeBatch(db);
-
-        parsed.data.forEach(contact => {
-            const newMemberRef = doc(collection(db, 'contacts'));
-            batch.set(newMemberRef, { 
-                name: contact.name, 
-                phone: contact.phone,
-                location: 'Imported', // Default location
-                groups: [] 
-            });
-        });
-        
-        await batch.commit();
-
-        revalidatePath('/members');
-        return { success: true, count: parsed.data.length };
-
-    } catch (error) {
-        console.error("Error importing members:", error);
-        return { success: false, error: 'An unexpected error occurred during import.' };
-    }
-}
-
-
 const updateMemberSchema = memberSchema.extend({
     id: z.string().min(1, 'Member ID is required.'),
 });
