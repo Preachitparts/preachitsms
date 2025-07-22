@@ -493,3 +493,43 @@ export async function inviteAdmin(formData: FormData) {
         return { error: 'An unexpected error occurred.' };
     }
 }
+
+const csvMemberSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  phone: z.string().min(1, 'Phone is required'),
+  location: z.string().min(1, 'Location is required'),
+});
+
+const importCsvSchema = z.array(csvMemberSchema);
+
+export async function importMembersFromCSV(contacts: { name: string, phone: string, location: string }[]) {
+    try {
+        const parsed = importCsvSchema.safeParse(contacts);
+        if (!parsed.success) {
+            const firstError = parsed.error.errors[0];
+            const errorMessage = `Invalid CSV data at row ${firstError.path[0]}: ${firstError.message}`;
+            return { success: false, error: errorMessage };
+        }
+
+        const batch = writeBatch(db);
+
+        parsed.data.forEach(contact => {
+            const newMemberRef = doc(collection(db, 'contacts'));
+            batch.set(newMemberRef, { 
+                name: contact.name, 
+                phone: contact.phone,
+                location: contact.location,
+                groups: [] 
+            });
+        });
+        
+        await batch.commit();
+
+        revalidatePath('/members');
+        return { success: true, count: parsed.data.length };
+
+    } catch (error) {
+        console.error("Error importing members from CSV:", error);
+        return { success: false, error: 'An unexpected error occurred during CSV import.' };
+    }
+}
