@@ -20,7 +20,7 @@ interface MessageComposerProps {
 
 export function MessageComposer({ selectedContacts, selectedGroups }: MessageComposerProps) {
   const [message, setMessage] = useState('');
-  const [senderId, setSenderId] = useState('');
+  const [senderId, setSenderId] = useState('Preach It');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isSending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -55,8 +55,11 @@ export function MessageComposer({ selectedContacts, selectedGroups }: MessageCom
           description: 'Your message has been sent.',
         });
         setMessage('');
-        setSenderId('');
-        formRef.current?.reset();
+        // Don't reset senderId to keep the default value
+        if (formRef.current) {
+          formRef.current.reset();
+          setSenderId('Preach It');
+        }
       } else {
         toast({
           variant: 'destructive',
