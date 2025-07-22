@@ -68,11 +68,11 @@ export default function LoginPage() {
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="name@example.com" required defaultValue={process.env.NODE_ENV === 'development' ? 'admin@example.com' : ''}/>
+              <Input id="email" name="email" type="email" placeholder="name@example.com" required defaultValue="admin@example.com" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required defaultValue={process.env.NODE_ENV === 'development' ? 'password' : ''} />
+              <Input id="password" name="password" type="password" required defaultValue="password" />
             </div>
              {!isLogin && (
                 <div className="space-y-2">
