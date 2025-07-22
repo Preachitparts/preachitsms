@@ -21,6 +21,7 @@ export interface Group {
 
 export interface SmsRecord {
   id: string;
+  senderId?: string;
   recipient: string;
   message: string;
   status: 'Sent' | 'Failed' | 'Pending';

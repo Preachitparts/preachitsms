@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useTransition } from 'react';
@@ -7,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendSms } from '@/app/actions';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 const MAX_CHARS = 160;
 
 export function MessageComposer() {
   const [message, setMessage] = useState('');
+  const [senderId, setSenderId] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isSending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -40,9 +44,10 @@ export function MessageComposer() {
       if (result.success) {
         toast({
           title: 'Success!',
-          description: 'Your message has been queued for sending.',
+          description: 'Your message has been sent.',
         });
         setMessage('');
+        setSenderId('');
         formRef.current?.reset();
       } else {
         toast({
@@ -61,12 +66,26 @@ export function MessageComposer() {
         <CardDescription>Craft your SMS and send it to your selected contacts.</CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSend} className="flex flex-col flex-grow">
-        <CardContent className="flex-grow">
+        <CardContent className="flex-grow space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="senderId">Sender ID</Label>
+            <Input
+              id="senderId"
+              name="senderId"
+              placeholder="Max 11 characters"
+              maxLength={11}
+              required
+              value={senderId}
+              onChange={(e) => setSenderId(e.target.value)}
+            />
+          </div>
           <div className="relative">
+            <Label htmlFor="message" className="sr-only">Message</Label>
             <Textarea
+              id="message"
               name="message"
               placeholder="Type your message here..."
-              className="min-h-[300px] pr-14 resize-none"
+              className="min-h-[250px] resize-none"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={MAX_CHARS}
@@ -86,7 +105,7 @@ export function MessageComposer() {
             )}
             Refine with AI
           </Button>
-          <Button type="submit" disabled={isSending || !message}>
+          <Button type="submit" disabled={isSending || !message || !senderId}>
             {isSending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

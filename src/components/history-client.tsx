@@ -38,6 +38,7 @@ export function HistoryClient({ initialHistory }: { initialHistory: SmsRecord[] 
         <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Sender ID</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead className="text-center">Status</TableHead>
@@ -47,7 +48,8 @@ export function HistoryClient({ initialHistory }: { initialHistory: SmsRecord[] 
             <TableBody>
               {history.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.recipient}</TableCell>
+                  <TableCell className="font-medium">{record.senderId || '-'}</TableCell>
+                  <TableCell>{record.recipient}</TableCell>
                   <TableCell className="max-w-xs truncate">{record.message}</TableCell>
                   <TableCell className="text-center">
                     <Badge

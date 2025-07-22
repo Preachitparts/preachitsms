@@ -7,12 +7,14 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, 
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
+  senderId: z.string().min(1, 'Sender ID cannot be empty.').max(11, 'Sender ID cannot be more than 11 characters.'),
   message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message is too long.'),
 });
 
 export async function sendSms(formData: FormData) {
   try {
     const parsed = smsSchema.safeParse({
+      senderId: formData.get('senderId'),
       message: formData.get('message'),
     });
 
@@ -20,10 +22,10 @@ export async function sendSms(formData: FormData) {
       return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { message } = parsed.data;
+    const { message, senderId } = parsed.data;
 
     // TODO: This should be replaced with actual Hubtel API call
-    console.log('Sending SMS:', message);
+    console.log('Sending SMS From:', senderId, 'Message:', message);
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     if (message.toLowerCase().includes('fail')) {
@@ -32,6 +34,7 @@ export async function sendSms(formData: FormData) {
     
     // Add to history
     await addDoc(collection(db, 'smsHistory'), {
+      senderId,
       recipient: 'Selected Recipients', // This needs to be implemented
       message,
       status: 'Sent',
@@ -46,6 +49,7 @@ export async function sendSms(formData: FormData) {
     console.error('SMS sending error:', error);
     
     await addDoc(collection(db, 'smsHistory'), {
+      senderId: formData.get('senderId'),
       recipient: 'Selected Recipients', // This needs to be implemented
       message: formData.get('message'),
       status: 'Failed',
