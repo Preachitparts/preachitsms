@@ -449,4 +449,52 @@ export async function saveApiKeys(formData: FormData) {
     }
 }
 
-    
+const inviteAdminSchema = z.object({
+    inviteEmail: z.string().email('Invalid email address.'),
+    fullName: z.string().min(2, 'Full name is required.'),
+    canSeeSettings: z.boolean(),
+});
+
+export async function inviteAdmin(formData: FormData) {
+    try {
+        const parsed = inviteAdminSchema.safeParse({
+            inviteEmail: formData.get('inviteEmail'),
+            fullName: formData.get('fullName'),
+            canSeeSettings: formData.get('canSeeSettings') === 'on',
+        });
+
+        if (!parsed.success) {
+            return { error: parsed.error.errors.map(e => e.message).join(', ') };
+        }
+
+        const { inviteEmail, fullName, canSeeSettings } = parsed.data;
+
+        // This is a placeholder for sending an actual invite.
+        // In a real app, you would use Firebase Auth to create a user
+        // and send a password reset/setup email.
+        console.log(`Inviting ${fullName} <${inviteEmail}> with settings access: ${canSeeSettings}`);
+        
+        // For now, we will just add them to the admins collection.
+        // We can't create an auth user from the server action without the admin SDK.
+        // A more complete solution would use a callable function or the Admin SDK.
+        
+        // We'll add a placeholder document to the admins collection.
+        // The user will need to sign up with this exact email.
+        // The signup action will then claim this record.
+        const adminRef = doc(collection(db, 'admins'));
+        await setDoc(adminRef, {
+            email: inviteEmail,
+            fullName,
+            canSeeSettings,
+            status: 'invited' // A status to show they haven't signed up yet
+        });
+
+
+        revalidatePath('/settings');
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error inviting admin:", error);
+        return { error: 'An unexpected error occurred.' };
+    }
+}
