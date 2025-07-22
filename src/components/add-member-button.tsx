@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState, useEffect, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,7 +39,7 @@ function SubmitButton() {
 
 export function AddMemberButton({ groups }: { groups: Group[] }) {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(addMember, initialState);
+  const [state, formAction] = useActionState(addMember, initialState);
   const { toast } = useToast();
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);

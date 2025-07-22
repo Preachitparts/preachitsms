@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState, useEffect, useRef, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,7 +41,7 @@ function SubmitButton() {
 
 export function EditGroupButton({ group }: { group: Group }) {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(updateGroup, initialState);
+  const [state, formAction] = useActionState(updateGroup, initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedColor, setSelectedColor] = useState(group.color || COLORS[0]);
