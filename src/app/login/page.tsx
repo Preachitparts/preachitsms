@@ -39,7 +39,6 @@ export default function LoginPage() {
             description: 'You are now logged in.',
           });
           router.push('/');
-          router.refresh();
         } else {
             toast({
                 title: 'Account Created!',
