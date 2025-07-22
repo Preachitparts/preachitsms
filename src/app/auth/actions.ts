@@ -4,10 +4,11 @@
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc, collectionGroup, deleteDoc } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
+import { getAdminApp } from '@/lib/firebase-admin';
 
 export interface Admin {
   uid: string;
@@ -55,42 +56,18 @@ export async function signup(formData: FormData) {
         const adminsCollectionRef = collection(db, 'admins');
         const adminsSnapshot = await getDocs(adminsCollectionRef);
         const isFirstAdmin = adminsSnapshot.empty;
-        let canProceed = isFirstAdmin;
-        let inviteData: any = null;
-
-        if (!isFirstAdmin) {
-             const q = query(adminsCollectionRef, where('email', '==', email), where('status', '==', 'invited'));
-             const inviteSnapshot = await getDocs(q);
-             if (inviteSnapshot.empty) {
-                 return { error: "This email has not been invited. Please contact an administrator." };
-             } else {
-                canProceed = true;
-                inviteData = { id: inviteSnapshot.docs[0].id, ...inviteSnapshot.docs[0].data()};
-             }
-        } else {
-             // For the very first admin, we can proceed.
-             canProceed = true;
-        }
-
-        if (!canProceed) {
-            return { error: "Signup is currently disabled. Please contact an administrator for an invitation." };
-        }
-
+        
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         const adminData: Omit<Admin, 'uid'> & {status: 'registered'} = {
             email: user.email!,
-            fullName: inviteData?.fullName || fullName,
-            canSeeSettings: isFirstAdmin || (inviteData?.canSeeSettings ?? false),
+            fullName: fullName,
+            canSeeSettings: isFirstAdmin,
             status: 'registered',
         };
         
         await setDoc(doc(db, 'admins', user.uid), adminData);
-        
-        if (inviteData?.id) {
-            await deleteDoc(doc(db, 'admins', inviteData.id));
-        }
         
         return { success: true };
 
@@ -118,11 +95,15 @@ export async function login(formData: FormData) {
     try {
         const { user } = await signInWithEmailAndPassword(auth, email, password);
         const idToken = await user.getIdToken();
-
-        cookies().set('firebaseIdToken', idToken, {
+        
+        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+        const adminAuth = (await getAdminApp()).auth();
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+        
+        cookies().set('session', sessionCookie, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 60 * 60 * 24, // 1 day
+            maxAge: expiresIn,
             path: '/',
         });
         
@@ -134,31 +115,22 @@ export async function login(formData: FormData) {
 }
 
 export async function logout() {
-    cookies().delete('firebaseIdToken');
+    cookies().delete('session');
     redirect('/login');
 }
 
 export async function getCurrentUser(): Promise<Admin | null> {
-    const idToken = cookies().get('firebaseIdToken')?.value;
+    const sessionCookie = cookies().get('session')?.value;
 
-    if (!idToken) {
+    if (!sessionCookie) {
         return null;
     }
 
     try {
-        // A simple way to decode the token payload without a full JWT library
-        // This does NOT verify the token, it only decodes it. 
-        // Verification happens implicitly on the backend when you use Firebase services,
-        // but for getting user data, we just need the UID.
-        const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
-        const uid = decodedToken.user_id;
-
-        if (!uid) {
-             console.warn("Could not find UID in token.");
-             cookies().delete('firebaseIdToken');
-             return null;
-        }
-
+        const adminAuth = (await getAdminApp()).auth();
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+        const uid = decodedToken.uid;
+        
         const adminDocRef = doc(db, 'admins', uid);
         const adminDoc = await getDoc(adminDocRef);
 
@@ -166,16 +138,13 @@ export async function getCurrentUser(): Promise<Admin | null> {
             return { uid, ...adminDoc.data() } as Admin;
         }
         
-        // This is a critical case: user is authenticated with Firebase, but has no admin record.
-        // This can happen if the record was manually deleted.
         console.warn(`User with UID ${uid} is authenticated but not found in 'admins' collection.`);
-        cookies().delete('firebaseIdToken'); // Log them out
+        cookies().delete('session');
         return null;
 
     } catch(e) {
-        console.error("Failed to decode token or fetch user", e);
-        // If the token is malformed or there's an error, log them out.
-        cookies().delete('firebaseIdToken');
+        console.error("Failed to verify session cookie or fetch user", e);
+        cookies().delete('session');
         return null;
     }
 }

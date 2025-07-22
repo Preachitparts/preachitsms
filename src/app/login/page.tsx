@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { MessageSquareText, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { login, signup } from '@/app/auth/actions';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -17,15 +16,12 @@ export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
-      // The login action now handles the redirect, so we don't need to do it here.
-      // We only need to handle the response if there's an error.
       const result = isLogin ? await login(formData) : await signup(formData);
 
       if (result?.error) {

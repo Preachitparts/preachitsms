@@ -2,10 +2,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const idToken = request.cookies.get('firebaseIdToken')?.value;
+  const sessionCookie = request.cookies.get('session')?.value;
   const { pathname } = request.nextUrl
 
-  const isAuthenticated = !!idToken;
+  const isAuthenticated = !!sessionCookie;
 
   if (!isAuthenticated && pathname !== '/login' && pathname !== '/forgot-password' && !pathname.startsWith('/auth')) {
     return NextResponse.redirect(new URL('/login', request.url))
