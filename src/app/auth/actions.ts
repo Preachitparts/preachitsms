@@ -55,45 +55,27 @@ export async function signup(formData: FormData) {
         const adminsCollectionRef = collection(db, 'admins');
         const adminsSnapshot = await getDocs(adminsCollectionRef);
         const isFirstAdmin = adminsSnapshot.empty;
-        let canSeeSettings = false;
-        let isInvited = false;
-        let invitedDocId: string | null = null;
-        
-        // Special check for the first, hardcoded admin
-        if (email === 'michaelquaicoe60@gmail.com' && isFirstAdmin) {
-             canSeeSettings = true;
-        } else {
-            const q = query(adminsCollectionRef, where('email', '==', email));
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                 return { error: "This email is not invited. Please contact an administrator." };
-            }
-            const invitedDoc = querySnapshot.docs[0];
-            if (invitedDoc.data().status === 'registered') {
-                return { error: "This email is already registered." };
-            }
-            canSeeSettings = invitedDoc.data().canSeeSettings;
-            isInvited = true;
-            invitedDocId = invitedDoc.id;
+
+        if (!isFirstAdmin) {
+             const q = query(adminsCollectionRef, where('email', '==', email), where('status', '==', 'invited'));
+             const inviteSnapshot = await getDocs(q);
+             if (inviteSnapshot.empty) {
+                 return { error: "This email has not been invited. Please contact an administrator." };
+             }
         }
-        
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        const adminData = {
-            uid: user.uid,
-            email: user.email,
+        const adminData: Omit<Admin, 'uid'> & {status: 'registered'} = {
+            email: user.email!,
             fullName,
-            canSeeSettings,
-            status: 'registered' as const,
+            canSeeSettings: isFirstAdmin, // First admin gets full access
+            status: 'registered',
         };
-
-        if (isInvited && invitedDocId) {
-             await updateDoc(doc(db, "admins", invitedDocId), adminData);
-        } else {
-            // Use UID as the document ID for direct lookup
-            await setDoc(doc(db, 'admins', user.uid), adminData);
-        }
+        
+        // Use the user's UID as the document ID for easy lookup
+        await setDoc(doc(db, 'admins', user.uid), adminData);
         
         return { success: true };
 
