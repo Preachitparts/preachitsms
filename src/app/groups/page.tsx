@@ -2,6 +2,7 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getGroupsWithMemberCounts } from '@/lib/data';
 import { GroupsClient } from '@/components/groups-client';
+import { AddGroupButton } from '@/components/add-group-button';
 
 export const revalidate = 0; // Ensure dynamic rendering
 

@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/data';
+import { db } from '@/lib/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { EditGroupButton } from '@/components/edit-group-button';
 import { DeleteGroupButton } from '@/components/delete-group-button';
-import { Group } from '@/lib/data';
+import { type Group } from '@/lib/data';
 
 export function GroupsClient({ initialGroups }: { initialGroups: Group[] }) {
     const [groups, setGroups] = useState<Group[]>(initialGroups);
