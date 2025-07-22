@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -194,8 +195,8 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-            <SheetContent
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+          <SheetContent
               data-sidebar="sidebar"
               data-mobile="true"
               className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
@@ -263,28 +264,28 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar()
+  const { toggleSidebar, isMobile } = useSidebar()
 
   if (isMobile) {
-      return (
-        <SheetTrigger asChild>
-             <Button
-                ref={ref}
-                data-sidebar="trigger"
-                variant="ghost"
-                size="icon"
-                className={cn("h-7 w-7", className)}
-                onClick={(event) => {
-                    onClick?.(event)
-                    setOpenMobile(!openMobile)
-                }}
-                {...props}
-            >
-                <PanelLeft />
-                <span className="sr-only">Toggle Sidebar</span>
-            </Button>
-        </SheetTrigger>
-      )
+    return (
+      <SheetTrigger asChild>
+        <Button
+          ref={ref}
+          data-sidebar="trigger"
+          variant="ghost"
+          size="icon"
+          className={cn("h-7 w-7", className)}
+          onClick={(event) => {
+            onClick?.(event);
+            toggleSidebar();
+          }}
+          {...props}
+        >
+          <PanelLeft />
+          <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+      </SheetTrigger>
+    );
   }
 
   return (
