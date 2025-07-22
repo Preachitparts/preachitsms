@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -16,48 +16,15 @@ import {
 } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageSquareText, LayoutDashboard, History, LogOut, Users, Folder, Settings, Moon, Sun, Menu, Loader2 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MessageSquareText, LayoutDashboard, History, Users, Folder, Settings, Moon, Sun, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { logout, getCurrentUser, Admin } from '@/app/auth/actions';
 
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { setTheme, theme } = useTheme();
   const isMobile = useIsMobile();
-  const [user, setUser] = React.useState<Admin | null>(null);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      setLoading(true);
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        // This can happen if the cookie is stale or invalid.
-        // Redirecting to login will clear the cookie via middleware if needed.
-        router.push('/login');
-      } else {
-        setUser(currentUser);
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, [router]);
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const getPageTitle = () => {
     switch (pathname) {
@@ -75,11 +42,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         return 'Dashboard';
     }
   };
-
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  }
 
   const sidebarContent = (
     <>
@@ -125,67 +87,21 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {user?.canSeeSettings && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/settings'}>
-                    <Link href="/settings">
-                      <Settings />
-                      Settings
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/settings'}>
+                  <Link href="/settings">
+                    <Settings />
+                    Settings
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          {loading ? (
-            <div className="flex items-center gap-2 p-2">
-                <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
-                <div className="hidden group-data-[state=expanded]:flex flex-col gap-1 w-32">
-                  <div className="h-4 w-full rounded-md bg-muted animate-pulse"></div>
-                  <div className="h-3 w-3/4 rounded-md bg-muted animate-pulse"></div>
-                </div>
-            </div>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex w-full items-center justify-start gap-2 p-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.photoURL || ''} alt={user?.fullName || ''} data-ai-hint="user avatar" />
-                    <AvatarFallback>{user?.fullName ? getInitials(user.fullName) : 'AD'}</AvatarFallback>
-                  </Avatar>
-                  <div className="hidden text-left group-data-[state=expanded]:block">
-                    <p className="text-sm font-medium truncate">{user?.fullName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.fullName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {/* User profile section removed */}
         </SidebarFooter>
     </>
   )
-
-  if (loading) {
-    return (
-        <div className="flex min-h-screen items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-    );
-  }
 
   return (
     <SidebarProvider>

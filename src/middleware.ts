@@ -2,19 +2,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('session')?.value;
-  const { pathname } = request.nextUrl
-
-  const isAuthenticated = !!sessionCookie;
-
-  if (!isAuthenticated && pathname !== '/login' && pathname !== '/forgot-password' && !pathname.startsWith('/auth')) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (isAuthenticated && (pathname === '/login' || pathname === '/forgot-password')) {
-    return NextResponse.redirect(new URL('/', request.url))
-  }
-
   return NextResponse.next();
 }
 
