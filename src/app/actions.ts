@@ -89,7 +89,7 @@ export async function sendSms(formData: FormData) {
       ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
     
-    const authHeader = `Basic ${Buffer.from(`${apiKeys.clientId}:${apiKeys.clientSecret}`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`)}`;
     
     const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send`, {
         method: 'POST',
@@ -538,5 +538,3 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
-
-    
