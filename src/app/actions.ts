@@ -39,13 +39,11 @@ export async function sendSms(formData: FormData) {
 
     const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-    // 1. Get API Keys from Firestore
     const apiKeys = await getApiKeys();
     if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
     }
 
-    // 2. Aggregate all recipient phone numbers
     const contactsSnapshot = await getDocs(collection(db, 'contacts'));
     const contactMap = new Map(contactsSnapshot.docs.map(doc => [doc.id, doc.data()]));
     
@@ -86,18 +84,29 @@ export async function sendSms(formData: FormData) {
           .filter(Boolean)
       : [];
     
-    // 3. Call Hubtel API
-    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?clientId=${apiKeys.clientId}&clientSecret=${apiKeys.clientSecret}&from=${senderId}&to=${Array.from(allRecipientNumbers).join(',')}&content=${encodeURIComponent(message)}`, {
-        method: 'GET', // Or POST, depending on API. Docs say GET for simple send.
+    // Use Basic Authentication as required by Hubtel API
+    const authHeader = `Basic ${Buffer.from(`${apiKeys.clientId}:${apiKeys.clientSecret}`).toString('base64')}`;
+    
+    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?from=${senderId}&to=${Array.from(allRecipientNumbers).join(',')}&content=${encodeURIComponent(message)}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': authHeader,
+        },
     });
     
-    const hubtelResult = await hubtelResponse.json();
+    const hubtelResultText = await hubtelResponse.text();
+    let hubtelResult;
+    try {
+        hubtelResult = JSON.parse(hubtelResultText);
+    } catch(e) {
+        throw new Error(`Hubtel API returned an invalid response: ${hubtelResultText}`);
+    }
+
 
     if (!hubtelResponse.ok || hubtelResult.status !== 0) {
-         throw new Error(hubtelResult.message || 'Hubtel API request failed.');
+         throw new Error(hubtelResult.message || hubtelResult.Message || 'Hubtel API request failed.');
     }
     
-    // Add to history
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
       recipientCount,
@@ -228,23 +237,19 @@ export async function updateMember(prevState: any, formData: FormData) {
         const batch = writeBatch(db);
         const memberRef = doc(db, 'contacts', id);
 
-        // Get the current groups of the member
         const memberDoc = await getDoc(memberRef);
         const currentGroups = memberDoc.data()?.groups || [];
 
         const groupsToAdd = groups.filter(g => !currentGroups.includes(g));
         const groupsToRemove = currentGroups.filter((g: string) => !groups.includes(g));
 
-        // Update the member document
         batch.update(memberRef, { name, phone, location, groups });
 
-        // Add member to new groups
         for (const groupId of groupsToAdd) {
           const groupRef = doc(db, 'groups', groupId);
           batch.update(groupRef, { members: arrayUnion(id) });
         }
         
-        // Remove member from old groups
         for (const groupId of groupsToRemove) {
           const groupRef = doc(db, 'groups', groupId);
           batch.update(groupRef, { members: arrayRemove(id) });
@@ -275,7 +280,6 @@ export async function deleteMember(formData: FormData) {
         const batch = writeBatch(db);
         const memberRef = doc(db, 'contacts', id);
 
-        // Get the member's groups to remove them from those groups
         const memberDoc = await getDoc(memberRef);
         const groups = memberDoc.data()?.groups || [];
         for (const groupId of groups) {
@@ -296,7 +300,6 @@ export async function deleteMember(formData: FormData) {
     }
 }
 
-// Group Actions
 const groupSchema = z.object({
     name: z.string().min(2, 'Group name must be at least 2 characters.'),
     description: z.string().optional(),
@@ -382,7 +385,6 @@ export async function deleteGroup(formData: FormData) {
     }
 }
 
-// Settings Action
 const settingsSchema = z.object({
     clientId: z.string().min(1, 'Client ID cannot be empty.'),
     clientSecret: z.string().min(1, 'Client Secret cannot be empty.'),
@@ -431,7 +433,6 @@ export async function inviteAdmin(formData: FormData) {
 
         const { inviteEmail, fullName, canSeeSettings } = parsed.data;
 
-        // Check if user already exists
         const q = query(collection(db, 'admins'), where('email', '==', inviteEmail));
         const existingAdmin = await getDocs(q);
         if(!existingAdmin.empty) {
@@ -443,7 +444,7 @@ export async function inviteAdmin(formData: FormData) {
             email: inviteEmail,
             fullName,
             canSeeSettings,
-            status: 'invited' // A status to show they haven't signed up yet
+            status: 'invited'
         });
 
 
@@ -478,7 +479,6 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         let updatedCount = 0;
         let createdCount = 0;
         
-        // Fetch existing contacts and groups for efficient lookup
         const contactsSnapshot = await getDocs(collection(db, 'contacts'));
         const existingContactsByPhone = new Map(contactsSnapshot.docs.map(doc => [doc.data().phone, { id: doc.id, ...doc.data() }]));
 
@@ -504,12 +504,10 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
             };
 
             if (existingContact) {
-                // Update existing contact
                 const contactRef = doc(db, 'contacts', existingContact.id);
                 batch.update(contactRef, contactData);
                 updatedCount++;
             } else {
-                // Create new contact
                 const newMemberRef = doc(collection(db, 'contacts'));
                 batch.set(newMemberRef, contactData);
                 createdCount++;
