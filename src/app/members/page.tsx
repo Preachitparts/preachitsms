@@ -6,7 +6,10 @@ import { AddMemberButton } from '@/components/add-member-button';
 import { MembersTable } from '@/components/members-table';
 
 export default async function MembersPage() {
-  const [members, groups] = await Promise.all([getContacts(), getGroups()]);
+  const [members, groups] = await Promise.all([
+    getContacts(), 
+    getGroups(false) // Fetch without member counts for performance
+  ]);
 
   return (
     <MainLayout>

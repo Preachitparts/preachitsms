@@ -56,6 +56,8 @@ export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
   };
 
   const totalRecipients = selectedContacts.size + selectedGroups.size;
+  const contactMap = useMemo(() => new Map(contacts.map(c => [c.id, c.name])), [contacts]);
+  const groupMap = useMemo(() => new Map(groups.map(g => [g.id, g.name])), [groups]);
 
   return (
     <Card className="flex h-full flex-col">
@@ -78,7 +80,7 @@ export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
             <TabsTrigger value="individuals">Individuals</TabsTrigger>
             <TabsTrigger value="groups">Groups</TabsTrigger>
           </TabsList>
-          <TabsContent value="individuals" className="flex-grow mt-4">
+          <TabsContent value="individuals" className="flex-grow mt-4 overflow-hidden">
             <ScrollArea className="h-[300px] pr-4">
               <div className="space-y-4">
                 {filteredContacts.map(contact => (
@@ -97,7 +99,7 @@ export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
               </div>
             </ScrollArea>
           </TabsContent>
-          <TabsContent value="groups" className="flex-grow mt-4">
+          <TabsContent value="groups" className="flex-grow mt-4 overflow-hidden">
             <ScrollArea className="h-[300px] pr-4">
               <div className="space-y-4">
                 {filteredGroups.map(group => (
@@ -126,13 +128,13 @@ export function ContactSelector({ contacts, groups }: ContactSelectorProps) {
           <div className="flex flex-wrap gap-2">
             {Array.from(selectedContacts).map(id => (
               <Badge key={id} variant="outline" className="flex items-center gap-1">
-                {contacts.find(c => c.id === id)?.name}
+                {contactMap.get(id) || '...'}
                 <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleContactSelect(id)}><X className="h-3 w-3"/></Button>
               </Badge>
             ))}
             {Array.from(selectedGroups).map(id => (
               <Badge key={id} variant="outline" className="flex items-center gap-1">
-                {groups.find(g => g.id === id)?.name}
+                {groupMap.get(id) || '...'}
                 <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleGroupSelect(id)}><X className="h-3 w-3"/></Button>
               </Badge>
             ))}

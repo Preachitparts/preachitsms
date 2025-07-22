@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 export default async function GroupsPage() {
-  const groups = await getGroups();
+  const groups = await getGroups(true); // Fetch with member counts
 
   return (
     <MainLayout>

@@ -1,6 +1,6 @@
 
 import { db } from './firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 export interface Contact {
   id: string;
@@ -39,15 +39,23 @@ export async function getContacts(): Promise<Contact[]> {
   }
 }
 
-export async function getGroups(): Promise<Group[]> {
+export async function getGroups(calculateMembers = false): Promise<Group[]> {
   try {
-    const contacts = await getContacts();
     const groupsCol = collection(db, 'groups');
     const groupsSnapshot = await getDocs(groupsCol);
     
+    let contacts: Contact[] = [];
+    if (calculateMembers) {
+      // Only fetch all contacts if we need to calculate member counts
+      contacts = await getContacts();
+    }
+    
     const groupsList = groupsSnapshot.docs.map(doc => {
       const groupData = doc.data();
-      const memberCount = contacts.filter(c => c.groups?.includes(doc.id)).length;
+      let memberCount = 0;
+      if (calculateMembers) {
+         memberCount = contacts.filter(c => c.groups?.includes(doc.id)).length;
+      }
       return {
         id: doc.id,
         name: groupData.name,
@@ -58,8 +66,6 @@ export async function getGroups(): Promise<Group[]> {
     return groupsList;
   } catch (error) {
     console.error("Error fetching groups: ", error);
-    // You might want to seed initial groups if the collection doesn't exist.
-    // For now, returning an empty array on error.
     return [];
   }
 }
