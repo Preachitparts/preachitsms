@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
@@ -13,14 +13,25 @@ const smsSchema = z.object({
   selectedGroups: z.array(z.string()),
 });
 
+async function getApiKeys() {
+    const docRef = doc(db, 'settings', 'apiCredentials');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+}
+
 export async function sendSms(formData: FormData) {
+  let smsData = {
+      senderId: formData.get('senderId') as string,
+      message: formData.get('message') as string,
+      selectedContacts: formData.getAll('selectedContacts') as string[],
+      selectedGroups: formData.getAll('selectedGroups') as string[]
+  };
+
   try {
-    const parsed = smsSchema.safeParse({
-      senderId: formData.get('senderId'),
-      message: formData.get('message'),
-      selectedContacts: formData.getAll('selectedContacts'),
-      selectedGroups: formData.getAll('selectedGroups'),
-    });
+    const parsed = smsSchema.safeParse(smsData);
 
     if (!parsed.success) {
       return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
@@ -28,41 +39,69 @@ export async function sendSms(formData: FormData) {
 
     const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-    let recipientCount = selectedContacts.length;
-    let recipientGroups: string[] = [];
+    // 1. Get API Keys from Firestore
+    const apiKeys = await getApiKeys();
+    if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
+        return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
+    }
+
+    // 2. Aggregate all recipient phone numbers
+    const contactsSnapshot = await getDocs(collection(db, 'contacts'));
+    const contactMap = new Map(contactsSnapshot.docs.map(doc => [doc.id, doc.data()]));
+    
+    let allRecipientNumbers = new Set<string>();
+
+    selectedContacts.forEach(contactId => {
+        const contact = contactMap.get(contactId);
+        if (contact?.phone) {
+            allRecipientNumbers.add(contact.phone);
+        }
+    });
 
     if (selectedGroups.length > 0) {
         const groupsSnapshot = await getDocs(collection(db, 'groups'));
         const groupMap = new Map(groupsSnapshot.docs.map(doc => [doc.id, doc.data()]));
 
-        const allGroupMembers = new Set<string>();
-
         selectedGroups.forEach(groupId => {
             const group = groupMap.get(groupId);
             if (group && group.members) {
-                group.members.forEach((memberId: string) => allGroupMembers.add(memberId));
-                recipientGroups.push(group.name);
+                group.members.forEach((memberId: string) => {
+                    const member = contactMap.get(memberId);
+                    if (member?.phone) {
+                        allRecipientNumbers.add(member.phone);
+                    }
+                });
             }
         });
-        
-        const uniqueGroupMembers = Array.from(allGroupMembers).filter(memberId => !selectedContacts.includes(memberId));
-        recipientCount += uniqueGroupMembers.length;
     }
 
+    if (allRecipientNumbers.size === 0) {
+        return { success: false, error: "No recipients selected or recipients have no phone numbers." };
+    }
+    
+    const recipientCount = allRecipientNumbers.size;
+    const recipientGroupsNames = selectedGroups.length > 0 
+      ? (await Promise.all(selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
+          .map(d => d.data()?.name)
+          .filter(Boolean)
+      : [];
+    
+    // 3. Call Hubtel API
+    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send?clientId=${apiKeys.clientId}&clientSecret=${apiKeys.clientSecret}&from=${senderId}&to=${Array.from(allRecipientNumbers).join(',')}&content=${encodeURIComponent(message)}`, {
+        method: 'GET', // Or POST, depending on API. Docs say GET for simple send.
+    });
+    
+    const hubtelResult = await hubtelResponse.json();
 
-    // TODO: This should be replaced with actual Hubtel API call
-    console.log('Sending SMS From:', senderId, 'Message:', message, 'to', recipientCount, 'recipients');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    if (message.toLowerCase().includes('fail')) {
-        throw new Error('Hubtel API simulation failed.');
+    if (!hubtelResponse.ok || hubtelResult.status !== 0) {
+         throw new Error(hubtelResult.message || 'Hubtel API request failed.');
     }
     
     // Add to history
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
       recipientCount,
-      recipientGroups,
+      recipientGroups: recipientGroupsNames,
       message,
       status: 'Sent',
       date: new Date().toISOString().split('T')[0],
@@ -70,16 +109,22 @@ export async function sendSms(formData: FormData) {
     });
 
     revalidatePath('/history');
-
     return { success: true };
+
   } catch (error) {
     console.error('SMS sending error:', error);
     
+    const recipientGroupsNames = smsData.selectedGroups.length > 0 
+      ? (await Promise.all(smsData.selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
+          .map(d => d.data()?.name)
+          .filter(Boolean)
+      : [];
+
     await addDoc(collection(db, 'smsHistory'), {
-      senderId: formData.get('senderId'),
+      senderId: smsData.senderId,
       recipientCount: 0,
-      recipientGroups: [],
-      message: formData.get('message'),
+      recipientGroups: recipientGroupsNames,
+      message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date(),
@@ -356,14 +401,10 @@ export async function saveApiKeys(formData: FormData) {
 
         const { clientId, clientSecret } = parsed.data;
 
-        // In a real app, you would save these securely, e.g., in a secure backend or environment variables.
-        // For this demo, we'll just log them to the console to show they were received.
-        console.log('Saving API Keys...');
-        console.log('Client ID:', clientId);
-        console.log('Client Secret:', clientSecret.substring(0, 4) + '...');
-        
-        // Simulate saving
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // In a real app, you would save these securely.
+        // We'll use a specific document in a 'settings' collection in Firestore.
+        const settingsRef = doc(db, 'settings', 'apiCredentials');
+        await setDoc(settingsRef, { clientId, clientSecret }, { merge: true });
         
         return { success: true };
     } catch (error) {
@@ -371,3 +412,5 @@ export async function saveApiKeys(formData: FormData) {
         return { success: false, error: 'An unexpected error occurred.' };
     }
 }
+
+    

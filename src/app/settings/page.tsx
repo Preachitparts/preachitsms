@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,13 +12,35 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { saveApiKeys } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeCustomizer } from '@/components/theme-customizer';
-import { Separator } from '@/components/ui/separator';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+async function getApiKeys() {
+    const docRef = doc(db, 'settings', 'apiCredentials');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+}
+
 
 export default function SettingsPage() {
   const [showClientId, setShowClientId] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [initialKeys, setInitialKeys] = useState({ clientId: '', clientSecret: '' });
+
+  useEffect(() => {
+    async function fetchKeys() {
+        const keys = await getApiKeys();
+        if (keys) {
+            setInitialKeys({ clientId: keys.clientId, clientSecret: keys.clientSecret });
+        }
+    }
+    fetchKeys();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -59,6 +81,7 @@ export default function SettingsPage() {
                     name="clientId"
                     type={showClientId ? 'text' : 'password'}
                     placeholder="Your Hubtel Client ID"
+                    defaultValue={initialKeys.clientId}
                     disabled={isPending}
                   />
                   <Button
@@ -82,6 +105,7 @@ export default function SettingsPage() {
                     name="clientSecret"
                     type={showClientSecret ? 'text' : 'password'}
                     placeholder="Your Hubtel Client Secret"
+                    defaultValue={initialKeys.clientSecret}
                     disabled={isPending}
                   />
                   <Button
@@ -119,3 +143,5 @@ export default function SettingsPage() {
     </MainLayout>
   );
 }
+
+    
