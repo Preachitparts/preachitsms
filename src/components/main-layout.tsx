@@ -44,13 +44,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        // This can happen if the cookie is stale.
-        // Redirecting to login will clear the cookie via middleware.
+        // This can happen if the cookie is stale or invalid.
+        // Redirecting to login will clear the cookie via middleware if needed.
         router.push('/login');
       } else {
         setUser(currentUser);
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchUser();
   }, [router]);

@@ -62,16 +62,14 @@ export async function signup(formData: FormData) {
              const q = query(adminsCollectionRef, where('email', '==', email), where('status', '==', 'invited'));
              const inviteSnapshot = await getDocs(q);
              if (inviteSnapshot.empty) {
-                // This logic is for the hardcoded first user
-                if(email.toLowerCase() === 'michaelquaicoe60@gmail.com') {
-                    canProceed = true;
-                } else {
-                    return { error: "This email has not been invited. Please contact an administrator." };
-                }
+                 return { error: "This email has not been invited. Please contact an administrator." };
              } else {
                 canProceed = true;
                 inviteData = { id: inviteSnapshot.docs[0].id, ...inviteSnapshot.docs[0].data()};
              }
+        } else {
+             // For the very first admin, we can proceed.
+             canProceed = true;
         }
 
         if (!canProceed) {
@@ -84,7 +82,7 @@ export async function signup(formData: FormData) {
         const adminData: Omit<Admin, 'uid'> & {status: 'registered'} = {
             email: user.email!,
             fullName: inviteData?.fullName || fullName,
-            canSeeSettings: isFirstAdmin || (email.toLowerCase() === 'michaelquaicoe60@gmail.com') || (inviteData?.canSeeSettings ?? false),
+            canSeeSettings: isFirstAdmin || (inviteData?.canSeeSettings ?? false),
             status: 'registered',
         };
         
@@ -149,10 +147,17 @@ export async function getCurrentUser(): Promise<Admin | null> {
 
     try {
         // A simple way to decode the token payload without a full JWT library
+        // This does NOT verify the token, it only decodes it. 
+        // Verification happens implicitly on the backend when you use Firebase services,
+        // but for getting user data, we just need the UID.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
-        if (!uid) return null;
+        if (!uid) {
+             console.warn("Could not find UID in token.");
+             cookies().delete('firebaseIdToken');
+             return null;
+        }
 
         const adminDocRef = doc(db, 'admins', uid);
         const adminDoc = await getDoc(adminDocRef);
@@ -161,11 +166,15 @@ export async function getCurrentUser(): Promise<Admin | null> {
             return { uid, ...adminDoc.data() } as Admin;
         }
         
+        // This is a critical case: user is authenticated with Firebase, but has no admin record.
+        // This can happen if the record was manually deleted.
         console.warn(`User with UID ${uid} is authenticated but not found in 'admins' collection.`);
+        cookies().delete('firebaseIdToken'); // Log them out
         return null;
 
     } catch(e) {
         console.error("Failed to decode token or fetch user", e);
+        // If the token is malformed or there's an error, log them out.
         cookies().delete('firebaseIdToken');
         return null;
     }
