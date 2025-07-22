@@ -1,6 +1,6 @@
 
 import { db } from './firebase';
-import { collection, getDocs, query, orderBy, getDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, getDoc, doc, Timestamp } from 'firebase/firestore';
 
 export interface Contact {
   id: string;
@@ -84,9 +84,12 @@ export async function getSmsHistory(): Promise<SmsRecord[]> {
     
     const historyList = historySnapshot.docs.map(doc => {
       const data = doc.data();
+      // Ensure createdAt is a plain object for server->client component communication
+      const createdAt = data.createdAt;
       return {
         id: doc.id,
-        ...data
+        ...data,
+        createdAt: createdAt instanceof Timestamp ? createdAt.toDate().toISOString() : createdAt,
       } as SmsRecord
     });
     
