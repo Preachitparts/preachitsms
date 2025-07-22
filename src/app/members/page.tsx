@@ -17,12 +17,12 @@ export default async function MembersPage() {
   return (
     <MainLayout>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="font-headline">Members</CardTitle>
             <CardDescription>Manage your contacts.</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <ImportContactsButton />
             <AddMemberButton groups={initialGroups} />
           </div>
