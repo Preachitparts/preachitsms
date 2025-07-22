@@ -401,8 +401,6 @@ export async function saveApiKeys(formData: FormData) {
 
         const { clientId, clientSecret } = parsed.data;
 
-        // In a real app, you would save these securely.
-        // We'll use a specific document in a 'settings' collection in Firestore.
         const settingsRef = doc(db, 'settings', 'apiCredentials');
         await setDoc(settingsRef, { clientId, clientSecret }, { merge: true });
         
