@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
 
@@ -58,9 +58,10 @@ export async function signup(formData: FormData) {
         let canSeeSettings = false;
         let isInvited = false;
         let invitedDocId: string | null = null;
-
-        if (isFirstAdmin) {
-            canSeeSettings = true;
+        
+        // Special check for the first, hardcoded admin
+        if (email === 'michaelquaicoe60@gmail.com' && isFirstAdmin) {
+             canSeeSettings = true;
         } else {
             const q = query(adminsCollectionRef, where('email', '==', email));
             const querySnapshot = await getDocs(q);
@@ -90,6 +91,7 @@ export async function signup(formData: FormData) {
         if (isInvited && invitedDocId) {
              await updateDoc(doc(db, "admins", invitedDocId), adminData);
         } else {
+            // Use UID as the document ID for direct lookup
             await setDoc(doc(db, 'admins', user.uid), adminData);
         }
         
@@ -160,15 +162,7 @@ export async function getCurrentUser(): Promise<Admin | null> {
         if (adminDoc.exists()) {
             return { uid, ...adminDoc.data() } as Admin;
         }
-
-        // Fallback for invited users whose doc ID might not be UID yet (should be rare)
-         const q = query(collection(db, 'admins'), where('email', '==', decodedToken.email), where('status', '==', 'registered'));
-         const querySnapshot = await getDocs(q);
-         if (!querySnapshot.empty) {
-             const doc = querySnapshot.docs[0];
-             return { uid: doc.data().uid || doc.id, ...doc.data() } as Admin;
-         }
-
+        
         console.warn(`User with UID ${uid} is authenticated but not found in 'admins' collection.`);
         return null;
 

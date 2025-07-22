@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MessageSquareText, Loader2 } from 'lucide-react';
+import { MessageSquareText, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { login, signup } from '@/app/auth/actions';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -77,12 +78,35 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required />
+               <div className="relative">
+                <Input id="password" name="password" type={showPassword ? 'text' : 'password'} required />
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute inset-y-0 right-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                >
+                    {showPassword ? <EyeOff /> : <Eye />}
+                    <span className="sr-only">{showPassword ? 'Hide' : 'Show'} password</span>
+                </Button>
+               </div>
             </div>
              {!isLogin && (
                 <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input id="confirmPassword" name="confirmPassword" type="password" required />
+                     <div className="relative">
+                        <Input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} required />
+                         <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute inset-y-0 right-0 h-full px-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <EyeOff /> : <Eye />}
+                        </Button>
+                    </div>
                 </div>
             )}
             <Button type="submit" className="w-full !mt-6" disabled={isPending}>
