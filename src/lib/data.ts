@@ -13,7 +13,9 @@ export interface Contact {
 export interface Group {
   id: string;
   name: string;
-  memberCount: number;
+  description?: string;
+  color?: string;
+  memberCount?: number; // Optional, as it's calculated on the fly
 }
 
 export interface SmsRecord {
@@ -39,27 +41,18 @@ export async function getContacts(): Promise<Contact[]> {
   }
 }
 
-export async function getGroups(calculateMembers = false): Promise<Group[]> {
+export async function getGroups(): Promise<Group[]> {
   try {
     const groupsCol = collection(db, 'groups');
     const groupsSnapshot = await getDocs(groupsCol);
     
-    let contacts: Contact[] = [];
-    if (calculateMembers) {
-      // Only fetch all contacts if we need to calculate member counts
-      contacts = await getContacts();
-    }
-    
     const groupsList = groupsSnapshot.docs.map(doc => {
       const groupData = doc.data();
-      let memberCount = 0;
-      if (calculateMembers) {
-         memberCount = contacts.filter(c => c.groups?.includes(doc.id)).length;
-      }
       return {
         id: doc.id,
         name: groupData.name,
-        memberCount: memberCount,
+        description: groupData.description,
+        color: groupData.color,
       } as Group
     });
 
