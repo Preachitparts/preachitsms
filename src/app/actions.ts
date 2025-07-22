@@ -81,27 +81,23 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
-    // Convert Set to Array for the API call
-    const recipientsArray = Array.from(allRecipientNumbers);
-    const recipientCount = recipientsArray.length;
+    // Convert Set to a comma-separated string for the API call
+    const recipientsString = Array.from(allRecipientNumbers).join(',');
+    const recipientCount = allRecipientNumbers.size;
     
     const recipientGroupsNames = selectedGroups.length > 0 
       ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
     
-    const authHeader = `Basic ${btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`)}`;
-    
-    const hubtelResponse = await fetch(`https://sms.hubtel.com/v1/messages/send`, {
-        method: 'POST',
-        headers: {
-            'Authorization': authHeader,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            From: senderId,
-            To: recipientsArray, // API requires an array of strings
-            Content: message,
-        })
+    const hubtelApiUrl = new URL('https://sms.hubtel.com/v1/messages/send');
+    hubtelApiUrl.searchParams.append('clientid', apiKeys.clientId);
+    hubtelApiUrl.searchParams.append('clientsecret', apiKeys.clientSecret);
+    hubtelApiUrl.searchParams.append('from', senderId);
+    hubtelApiUrl.searchParams.append('to', recipientsString);
+    hubtelApiUrl.searchParams.append('content', message);
+
+    const hubtelResponse = await fetch(hubtelApiUrl.toString(), {
+        method: 'GET',
     });
     
     const hubtelResponseText = await hubtelResponse.text();
@@ -110,13 +106,13 @@ export async function sendSms(formData: FormData) {
         hubtelResult = JSON.parse(hubtelResponseText);
     } catch(e) {
         console.error("Hubtel API invalid JSON response:", hubtelResponseText);
-        throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}`);
+        throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
 
 
-    if (hubtelResult.status !== 0) {
+    if (hubtelResult.Status !== 0 && hubtelResult.Status !== "0") {
          console.error("Hubtel API Error:", hubtelResult);
-         throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed with status ${hubtelResult.status}.`);
+         throw new Error(hubtelResult.Message || `Hubtel API request failed with status ${hubtelResult.Status}.`);
     }
     
     await addDoc(collection(db, 'smsHistory'), {
