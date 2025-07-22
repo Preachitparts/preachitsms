@@ -28,39 +28,41 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
     }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Phone</TableHead>
-          <TableHead>Location</TableHead>
-          <TableHead>Groups</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {members.map((member) => (
-          <TableRow key={member.id}>
-            <TableCell className="font-medium">{member.name}</TableCell>
-            <TableCell>{member.phone}</TableCell>
-            <TableCell>{member.location}</TableCell>
-            <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
-            <TableCell className="text-right">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <EditMemberButton member={member} groups={allGroups} />
-                  <DeleteMemberButton memberId={member.id} />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Groups</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {members.map((member) => (
+            <TableRow key={member.id}>
+              <TableCell className="font-medium whitespace-nowrap">{member.name}</TableCell>
+              <TableCell className="whitespace-nowrap">{member.phone}</TableCell>
+              <TableCell className="whitespace-nowrap">{member.location}</TableCell>
+              <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <EditMemberButton member={member} groups={allGroups} />
+                    <DeleteMemberButton memberId={member.id} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
