@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { MessageSquareText, LayoutDashboard, History, Users, Folder, Settings, Moon, Sun, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -124,6 +124,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="flex flex-col p-0">
+                            <SheetHeader className="p-4">
+                                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                            </SheetHeader>
                             <Sidebar isSheet>
                                 {sidebarContent}
                             </Sidebar>
