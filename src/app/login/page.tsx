@@ -23,25 +23,28 @@ export default function LoginPage() {
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
-      const { error } = isLogin ? await login(formData) : await signup(formData);
+      const result = isLogin ? await login(formData) : await signup(formData);
 
-      if (error) {
+      if (result.error) {
         toast({
           variant: 'destructive',
           title: 'Authentication Failed',
-          description: error,
+          description: result.error,
         });
       } else {
-        toast({
-          title: 'Success!',
-          description: isLogin ? 'You are now logged in.' : 'Account created. Please log in.',
-        });
         if (isLogin) {
+          toast({
+            title: 'Success!',
+            description: 'You are now logged in.',
+          });
           router.push('/');
           router.refresh();
         } else {
+            toast({
+                title: 'Account Created!',
+                description: 'Your admin account has been created. Please sign in to continue.',
+            });
           setIsLogin(true); // Switch to login view after signup
-          // Clear form fields
           (event.target as HTMLFormElement).reset();
         }
       }

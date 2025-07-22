@@ -20,12 +20,12 @@ export default function ForgotPasswordPage() {
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
-        const { error } = await sendPasswordReset(formData);
-        if (error) {
+        const result = await sendPasswordReset(formData);
+        if (result.error) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: error,
+                description: result.error,
             });
         } else {
             toast({

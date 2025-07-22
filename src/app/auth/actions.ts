@@ -158,6 +158,9 @@ export async function getCurrentUser() {
     }
 
     try {
+        // This is an insecure way to get the UID on the server.
+        // In a production app, you MUST verify the token using the Firebase Admin SDK.
+        // For this environment, we are decoding it without verification.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
@@ -212,7 +215,7 @@ export async function sendPasswordReset(formData: FormData) {
     }
     try {
         await sendPasswordResetEmail(auth, email);
-        return { error: null };
+        return { success: true };
     } catch (e: any) {
         return { error: 'Failed to send password reset email. Please check if the email is correct.' };
     }
