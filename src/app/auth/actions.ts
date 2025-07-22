@@ -8,7 +8,6 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 
 // This file contains server-side actions for authentication with Firebase.
 // We are using Firebase Auth for user management.
@@ -87,10 +86,16 @@ export async function signup(formData: FormData) {
         };
 
         if (invitedDocId) {
-            await setDoc(doc(db, 'admins', user.uid), adminData);
-            // Optionally, delete the invitation record
-            await updateDoc(doc(db, 'admins', invitedDocId), { status: 'registered', uid: user.uid });
+            // Because we can't reliably know the UID until after creation,
+            // we will update the invitation record instead of creating a new doc with the UID
+            await updateDoc(doc(db, 'admins', invitedDocId), { 
+              status: 'registered', 
+              uid: user.uid,
+              fullName: fullName,
+              canSeeSettings: canSeeSettings,
+            });
         } else {
+            // This path is for the very first admin
             await setDoc(doc(db, 'admins', user.uid), adminData);
         }
 
@@ -147,9 +152,8 @@ export async function getCurrentUser() {
     }
 
     try {
-        // Here you would ideally verify the token with Firebase Admin SDK
-        // For this environment, we will trust the client-side authentication and fetch user data based on the presence of the cookie.
-        // A full production app should have server-side token verification.
+        // This is a simplified, non-verified decoding for demonstration in a secure server environment.
+        // A production app should use the Firebase Admin SDK to verify the token.
         const decodedToken = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
         const uid = decodedToken.user_id;
 
@@ -157,8 +161,9 @@ export async function getCurrentUser() {
             return null;
         }
 
-        const adminDocRef = doc(db, 'admins', uid);
-        const adminDoc = await getDoc(adminDocRef);
+        // First, try fetching the admin doc using the UID as the document ID.
+        let adminDocRef = doc(db, 'admins', uid);
+        let adminDoc = await getDoc(adminDocRef);
 
         if (adminDoc.exists()) {
             return {
@@ -167,9 +172,26 @@ export async function getCurrentUser() {
             } as Admin;
         }
     
+        // If not found, it might be an invited user whose document ID is not yet the UID.
+        // Query by email instead.
+        const email = decodedToken.email;
+        if (email) {
+            const q = query(collection(db, 'admins'), where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0];
+                return {
+                    uid: doc.data().uid || doc.id,
+                    ...doc.data()
+                } as Admin
+            }
+        }
+        
         return null;
     } catch(e) {
         console.error("Failed to decode token or fetch user", e);
+        // If token is invalid, clear the cookie
+        cookies().delete('firebaseIdToken');
         return null;
     }
 }

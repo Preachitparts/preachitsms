@@ -11,12 +11,16 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { saveApiKeys, inviteAdmin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeCustomizer } from '@/components/theme-customizer';
-import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Admin, getCurrentUser } from '@/app/auth/actions';
+
+interface AdminDoc extends Admin {
+    status?: string;
+}
 
 async function getApiKeys() {
     const docRef = doc(db, 'settings', 'apiCredentials');
@@ -34,7 +38,7 @@ export default function SettingsPage() {
   const [isInvitePending, startInviteTransition] = useTransition();
   const { toast } = useToast();
   const [initialKeys, setInitialKeys] = useState({ clientId: '', clientSecret: '' });
-  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [admins, setAdmins] = useState<AdminDoc[]>([]);
   const [currentUser, setCurrentUser] = useState<Admin | null>(null);
   
   useEffect(() => {
@@ -49,7 +53,10 @@ export default function SettingsPage() {
     fetchInitialData();
 
     const unsub = onSnapshot(collection(db, 'admins'), (snapshot) => {
-        const adminsData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as Admin));
+        const adminsData = snapshot.docs.map(doc => ({ 
+            uid: doc.data().uid || doc.id, 
+            ...doc.data() 
+        } as AdminDoc));
         setAdmins(adminsData);
     });
 
@@ -93,12 +100,22 @@ export default function SettingsPage() {
       } else {
         toast({
           title: 'Success!',
-          description: 'Admin invitation sent. They will receive an email to set their password.',
+          description: 'Admin invitation sent. They can now sign up.',
         });
         form.reset();
       }
     });
   };
+
+  if (!currentUser) {
+     return (
+        <MainLayout>
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        </MainLayout>
+     )
+  }
 
   if (!currentUser?.canSeeSettings) {
     return (
@@ -228,6 +245,7 @@ export default function SettingsPage() {
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Access</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -236,6 +254,11 @@ export default function SettingsPage() {
                                 <TableRow key={admin.uid}>
                                     <TableCell>{admin.fullName}</TableCell>
                                     <TableCell>{admin.email}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={admin.status === 'registered' ? 'default' : 'secondary'}>
+                                            {admin.status || 'Invited'}
+                                        </Badge>
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant={admin.canSeeSettings ? 'default' : 'secondary'}>
                                             {admin.canSeeSettings ? 'Full Access' : 'Limited'}
