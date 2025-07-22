@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch, updateDoc, collectionGroup } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { redirect } from 'next/navigation';
 
@@ -55,12 +55,17 @@ export async function signup(formData: FormData) {
         const adminsCollectionRef = collection(db, 'admins');
         const adminsSnapshot = await getDocs(adminsCollectionRef);
         const isFirstAdmin = adminsSnapshot.empty;
+        let canProceed = isFirstAdmin;
+        let inviteData: any = null;
 
         if (!isFirstAdmin) {
              const q = query(adminsCollectionRef, where('email', '==', email), where('status', '==', 'invited'));
              const inviteSnapshot = await getDocs(q);
-             if (inviteSnapshot.empty) {
-                 return { error: "This email has not been invited. Please contact an administrator." };
+             if (!inviteSnapshot.empty) {
+                canProceed = true;
+                inviteData = { id: inviteSnapshot.docs[0].id, ...inviteSnapshot.docs[0].data()};
+             } else {
+                return { error: "This email has not been invited. Please contact an administrator." };
              }
         }
 
@@ -69,13 +74,18 @@ export async function signup(formData: FormData) {
 
         const adminData: Omit<Admin, 'uid'> & {status: 'registered'} = {
             email: user.email!,
-            fullName,
-            canSeeSettings: isFirstAdmin, // First admin gets full access
+            fullName: inviteData?.fullName || fullName,
+            canSeeSettings: isFirstAdmin || (inviteData?.canSeeSettings ?? false),
             status: 'registered',
         };
         
         // Use the user's UID as the document ID for easy lookup
         await setDoc(doc(db, 'admins', user.uid), adminData);
+        
+        // If this was an invite, delete the invite record
+        if (inviteData?.id) {
+            await deleteDoc(doc(db, 'admins', inviteData.id));
+        }
         
         return { success: true };
 

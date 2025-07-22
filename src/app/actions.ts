@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, writeBatch, arrayUnion, arrayRemove, getDoc, getDocs, setDoc, query, where } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
@@ -469,20 +469,15 @@ export async function inviteAdmin(formData: FormData) {
 
         const { inviteEmail, fullName, canSeeSettings } = parsed.data;
 
-        // This is a placeholder for sending an actual invite.
-        // In a real app, you would use Firebase Auth to create a user
-        // and send a password reset/setup email.
-        console.log(`Inviting ${fullName} <${inviteEmail}> with settings access: ${canSeeSettings}`);
-        
-        // For now, we will just add them to the admins collection.
-        // We can't create an auth user from the server action without the admin SDK.
-        // A more complete solution would use a callable function or the Admin SDK.
-        
-        // We'll add a placeholder document to the admins collection.
-        // The user will need to sign up with this exact email.
-        // The signup action will then claim this record.
-        const adminRef = doc(collection(db, 'admins'));
-        await setDoc(adminRef, {
+        // Check if user already exists
+        const q = query(collection(db, 'admins'), where('email', '==', inviteEmail));
+        const existingAdmin = await getDocs(q);
+        if(!existingAdmin.empty) {
+            return { error: 'An admin with this email already exists or has been invited.'}
+        }
+
+        const inviteRef = doc(collection(db, 'admins'));
+        await setDoc(inviteRef, {
             email: inviteEmail,
             fullName,
             canSeeSettings,
