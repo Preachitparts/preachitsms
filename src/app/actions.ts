@@ -38,11 +38,15 @@ export async function sendSms(formData: FormData) {
 
   const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-  // Pre-fetch group names here, outside the try/catch for logging, but handle potential empty state
+  // Pre-fetch group names here, outside the try/catch for logging
   const groupMapForLogging = new Map<string, string>();
   if (selectedGroups.length > 0) {
-      const groupsSnapshot = await getDocs(collection(db, 'groups'));
-      groupsSnapshot.docs.forEach(d => groupMapForLogging.set(d.id, d.data().name));
+      try {
+        const groupsSnapshot = await getDocs(query(collection(db, 'groups'), where('__name__', 'in', selectedGroups)));
+        groupsSnapshot.docs.forEach(d => groupMapForLogging.set(d.id, d.data().name));
+      } catch (e) {
+         console.error("Could not fetch group names for logging", e);
+      }
   }
   const recipientGroupNames = selectedGroups.map(gid => groupMapForLogging.get(gid)).filter(Boolean) as string[];
 
@@ -52,33 +56,36 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
     }
 
-    const [contactsSnapshot, groupsSnapshot] = await Promise.all([
-        getDocs(collection(db, 'contacts')),
-        getDocs(collection(db, 'groups'))
-    ]);
-    const contactMap = new Map(contactsSnapshot.docs.map(d => [d.id, d.data()]));
-    const groupMap = new Map(groupsSnapshot.docs.map(d => [d.id, d.data()]));
-
     const allRecipientNumbers = new Set<string>();
 
-    selectedContacts.forEach(contactId => {
-        const contact = contactMap.get(contactId);
-        if (contact?.phone) {
-            allRecipientNumbers.add(contact.phone);
-        }
-    });
+    if (selectedContacts.length > 0 || selectedGroups.length > 0) {
+        const [contactsSnapshot, groupsSnapshot] = await Promise.all([
+            getDocs(query(collection(db, 'contacts'))),
+            getDocs(query(collection(db, 'groups')))
+        ]);
+        const contactMap = new Map(contactsSnapshot.docs.map(d => [d.id, d.data()]));
+        const groupMap = new Map(groupsSnapshot.docs.map(d => [d.id, d.data()]));
 
-    selectedGroups.forEach(groupId => {
-        const group = groupMap.get(groupId);
-        if (group?.members) {
-            group.members.forEach((memberId: string) => {
-                const member = contactMap.get(memberId);
-                if (member?.phone) {
-                    allRecipientNumbers.add(member.phone);
-                }
-            });
-        }
-    });
+        selectedContacts.forEach(contactId => {
+            const contact = contactMap.get(contactId);
+            if (contact?.phone) {
+                allRecipientNumbers.add(contact.phone);
+            }
+        });
+
+        selectedGroups.forEach(groupId => {
+            const group = groupMap.get(groupId);
+            if (group?.members) {
+                group.members.forEach((memberId: string) => {
+                    const member = contactMap.get(memberId);
+                    if (member?.phone) {
+                        allRecipientNumbers.add(member.phone);
+                    }
+                });
+            }
+        });
+    }
+
 
     if (allRecipientNumbers.size === 0) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
@@ -107,21 +114,20 @@ export async function sendSms(formData: FormData) {
         hubtelResult = JSON.parse(hubtelResponseText);
     } catch(e) {
         console.error("Hubtel API invalid JSON response:", hubtelResponseText);
-        // Throw an error with the raw text response for debugging
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
     // Per Hubtel docs for POST requests, a 201 Created with a jobId indicates success.
     if (hubtelResponse.status !== 201 || !hubtelResult.jobId) {
          console.error("Hubtel API Error:", hubtelResult);
-         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed.`;
+         const errorMessage = hubtelResult.Message || `Hubtel API request failed.`;
          throw new Error(errorMessage);
     }
       
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
       recipientCount: recipientsArray.length,
-      recipientGroups,
+      recipientGroups: recipientGroupNames,
       message,
       status: 'Sent',
       date: new Date().toISOString().split('T')[0],
@@ -134,15 +140,15 @@ export async function sendSms(formData: FormData) {
   } catch (error) {
     console.error('SMS sending error:', error);
     
-    // Log the failure without making another database call in the catch block.
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
-      recipientGroups: recipientGroupNames, // Use the names fetched earlier
+      recipientGroups: recipientGroupNames,
       message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date(),
+      errorMessage: error instanceof Error ? error.message : 'Unknown error'
     });
 
     revalidatePath('/history');
