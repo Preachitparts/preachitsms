@@ -38,6 +38,14 @@ export async function sendSms(formData: FormData) {
 
   const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
+  // Pre-fetch group names here, outside the try/catch for logging, but handle potential empty state
+  const groupMapForLogging = new Map<string, string>();
+  if (selectedGroups.length > 0) {
+      const groupsSnapshot = await getDocs(collection(db, 'groups'));
+      groupsSnapshot.docs.forEach(d => groupMapForLogging.set(d.id, d.data().name));
+  }
+  const recipientGroupNames = selectedGroups.map(gid => groupMapForLogging.get(gid)).filter(Boolean) as string[];
+
   try {
     const apiKeys = await getApiKeys();
     if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
@@ -109,15 +117,11 @@ export async function sendSms(formData: FormData) {
          const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed.`;
          throw new Error(errorMessage);
     }
-    
-    const recipientGroupNames = selectedGroups.length > 0 
-      ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
-      : [];
       
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
       recipientCount: recipientsArray.length,
-      recipientGroups: recipientGroupNames,
+      recipientGroups,
       message,
       status: 'Sent',
       date: new Date().toISOString().split('T')[0],
@@ -130,14 +134,11 @@ export async function sendSms(formData: FormData) {
   } catch (error) {
     console.error('SMS sending error:', error);
     
-    const recipientGroupNamesForFailure = (await Promise.all(smsData.selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
-          .map(d => d.data()?.name)
-          .filter(Boolean);
-
+    // Log the failure without making another database call in the catch block.
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
-      recipientGroups: recipientGroupNamesForFailure,
+      recipientGroups: recipientGroupNames, // Use the names fetched earlier
       message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
