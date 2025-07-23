@@ -89,14 +89,10 @@ export async function sendSms(formData: FormData) {
       ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
     
-    const hubtelApiUrl = new URL('https://sms.hubtel.com/v1/messages/send');
-    hubtelApiUrl.searchParams.append('clientid', apiKeys.clientId);
-    hubtelApiUrl.searchParams.append('clientsecret', apiKeys.clientSecret);
-    hubtelApiUrl.searchParams.append('from', senderId);
-    hubtelApiUrl.searchParams.append('to', recipientsString);
-    hubtelApiUrl.searchParams.append('content', message);
+    // Manually construct the URL to avoid comma encoding by URLSearchParams
+    const hubtelApiUrl = `https://sms.hubtel.com/v1/messages/send?clientid=${encodeURIComponent(apiKeys.clientId)}&clientsecret=${encodeURIComponent(apiKeys.clientSecret)}&from=${encodeURIComponent(senderId)}&to=${recipientsString}&content=${encodeURIComponent(message)}`;
 
-    const hubtelResponse = await fetch(hubtelApiUrl.toString(), {
+    const hubtelResponse = await fetch(hubtelApiUrl, {
         method: 'GET',
     });
     
