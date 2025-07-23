@@ -23,22 +23,22 @@ async function getApiKeys() {
 }
 
 export async function sendSms(formData: FormData) {
-  let smsData = {
+  const smsData = {
       senderId: formData.get('senderId') as string,
       message: formData.get('message') as string,
       selectedContacts: formData.getAll('selectedContacts').map(String),
       selectedGroups: formData.getAll('selectedGroups').map(String)
   };
 
+  const parsed = smsSchema.safeParse(smsData);
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
+  }
+
+  const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
+
   try {
-    const parsed = smsSchema.safeParse(smsData);
-
-    if (!parsed.success) {
-      return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
-    }
-
-    const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
-
     const apiKeys = await getApiKeys();
     if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
@@ -72,22 +72,16 @@ export async function sendSms(formData: FormData) {
         }
     });
 
-
     if (allRecipientNumbers.size === 0) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
     const recipientsArray = Array.from(allRecipientNumbers);
-    const recipientCount = allRecipientNumbers.size;
     
-    const recipientGroupsNames = selectedGroups.length > 0 
-      ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
-      : [];
-      
     const payload = {
-      from: senderId,
-      to: recipientsArray,
-      content: message,
+      From: senderId,
+      To: recipientsArray,
+      Content: message,
     };
     
     const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
@@ -105,20 +99,25 @@ export async function sendSms(formData: FormData) {
         hubtelResult = JSON.parse(hubtelResponseText);
     } catch(e) {
         console.error("Hubtel API invalid JSON response:", hubtelResponseText);
+        // Throw an error with the raw text response for debugging
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
-    // Per Hubtel docs, a 200 OK with a specific JSON body means success.
-    // We check for the presence of jobId as a success indicator.
-    if (!hubtelResponse.ok || !hubtelResult.jobId) {
+    // Per Hubtel docs for POST requests, a 201 Created with a jobId indicates success.
+    if (hubtelResponse.status !== 201 || !hubtelResult.jobId) {
          console.error("Hubtel API Error:", hubtelResult);
-         throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed.`);
+         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed.`;
+         throw new Error(errorMessage);
     }
     
+    const recipientGroupNames = selectedGroups.length > 0 
+      ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
+      : [];
+      
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
-      recipientCount,
-      recipientGroups: recipientGroupsNames,
+      recipientCount: recipientsArray.length,
+      recipientGroups: recipientGroupNames,
       message,
       status: 'Sent',
       date: new Date().toISOString().split('T')[0],
@@ -131,16 +130,14 @@ export async function sendSms(formData: FormData) {
   } catch (error) {
     console.error('SMS sending error:', error);
     
-    const recipientGroupsNames = smsData.selectedGroups.length > 0 
-      ? (await Promise.all(smsData.selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
+    const recipientGroupNamesForFailure = (await Promise.all(smsData.selectedGroups.map(gid => getDoc(doc(db, 'groups', gid)))))
           .map(d => d.data()?.name)
-          .filter(Boolean)
-      : [];
+          .filter(Boolean);
 
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
-      recipientGroups: recipientGroupsNames,
+      recipientGroups: recipientGroupNamesForFailure,
       message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
@@ -534,5 +531,3 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
-
-    
