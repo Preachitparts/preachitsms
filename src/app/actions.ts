@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 
 const smsSchema = z.object({
   senderId: z.string().min(1, 'Sender ID cannot be empty.').max(11, 'Sender ID cannot be more than 11 characters.'),
-  message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message is too long.'),
+  message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message cannot be more than 160 characters.'),
   selectedContacts: z.array(z.string()),
   selectedGroups: z.array(z.string()),
 });
@@ -534,3 +534,5 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
+
+    
