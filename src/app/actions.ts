@@ -44,7 +44,6 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
     }
 
-    // 1. Fetch all contacts and groups once to create lookup maps.
     const [contactsSnapshot, groupsSnapshot] = await Promise.all([
         getDocs(collection(db, 'contacts')),
         getDocs(collection(db, 'groups'))
@@ -52,10 +51,8 @@ export async function sendSms(formData: FormData) {
     const contactMap = new Map(contactsSnapshot.docs.map(d => [d.id, d.data()]));
     const groupMap = new Map(groupsSnapshot.docs.map(d => [d.id, d.data()]));
 
-    // 2. Use a Set to automatically handle duplicate phone numbers.
     const allRecipientNumbers = new Set<string>();
 
-    // 3. Add numbers from individually selected contacts.
     selectedContacts.forEach(contactId => {
         const contact = contactMap.get(contactId);
         if (contact?.phone) {
@@ -63,7 +60,6 @@ export async function sendSms(formData: FormData) {
         }
     });
 
-    // 4. Add numbers from members of selected groups.
     selectedGroups.forEach(groupId => {
         const group = groupMap.get(groupId);
         if (group?.members) {
@@ -81,19 +77,28 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
-    // Convert Set to a comma-separated string for the API call
-    const recipientsString = Array.from(allRecipientNumbers).join(',');
+    const recipientsArray = Array.from(allRecipientNumbers);
     const recipientCount = allRecipientNumbers.size;
     
     const recipientGroupsNames = selectedGroups.length > 0 
       ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
-    
-    // Manually construct the URL to avoid comma encoding by URLSearchParams
-    const hubtelApiUrl = `https://sms.hubtel.com/v1/messages/send?clientid=${encodeURIComponent(apiKeys.clientId)}&clientsecret=${encodeURIComponent(apiKeys.clientSecret)}&from=${encodeURIComponent(senderId)}&to=${recipientsString}&content=${encodeURIComponent(message)}`;
+
+    const hubtelApiUrl = 'https://sms.hubtel.com/v1/messages/send';
+
+    const requestBody = {
+      From: senderId,
+      To: recipientsArray,
+      Content: message,
+    };
 
     const hubtelResponse = await fetch(hubtelApiUrl, {
-        method: 'GET',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`)}`
+      },
+      body: JSON.stringify(requestBody)
     });
     
     const hubtelResponseText = await hubtelResponse.text();
@@ -104,11 +109,12 @@ export async function sendSms(formData: FormData) {
         console.error("Hubtel API invalid JSON response:", hubtelResponseText);
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
-
-
-    if (hubtelResult.status !== 0 && hubtelResult.status !== "0") {
+    
+    // According to Hubtel docs, a 200 OK with a specific JSON body means success, even if status inside is non-zero
+    // However, let's trust the jobId presence for now.
+    if (!hubtelResponse.ok || !hubtelResult.jobId) {
          console.error("Hubtel API Error:", hubtelResult);
-         throw new Error(hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.status}.`);
+         throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed.`);
     }
     
     await addDoc(collection(db, 'smsHistory'), {
