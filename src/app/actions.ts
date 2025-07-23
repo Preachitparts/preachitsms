@@ -83,24 +83,22 @@ export async function sendSms(formData: FormData) {
     const recipientGroupsNames = selectedGroups.length > 0 
       ? selectedGroups.map(gid => groupMap.get(gid)?.name).filter(Boolean)
       : [];
-
-    const hubtelApiUrl = 'https://sms.hubtel.com/v1/messages/send';
-
-    const requestBody = {
-      From: senderId,
-      To: recipientsArray,
-      Content: message,
+      
+    const payload = {
+      from: senderId,
+      to: recipientsArray,
+      content: message,
     };
-
-    const hubtelResponse = await fetch(hubtelApiUrl, {
+    
+    const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`)}`
+        Authorization: 'Basic ' + btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`),
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(payload),
     });
-    
+
     const hubtelResponseText = await hubtelResponse.text();
     let hubtelResult;
     try {
@@ -110,8 +108,8 @@ export async function sendSms(formData: FormData) {
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
-    // According to Hubtel docs, a 200 OK with a specific JSON body means success, even if status inside is non-zero
-    // However, let's trust the jobId presence for now.
+    // Per Hubtel docs, a 200 OK with a specific JSON body means success.
+    // We check for the presence of jobId as a success indicator.
     if (!hubtelResponse.ok || !hubtelResult.jobId) {
          console.error("Hubtel API Error:", hubtelResult);
          throw new Error(hubtelResult.message || hubtelResult.Message || `Hubtel API request failed.`);
