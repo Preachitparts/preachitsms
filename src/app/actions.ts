@@ -110,9 +110,9 @@ export async function sendSms(formData: FormData) {
     }
 
 
-    if (hubtelResult.Status !== 0 && hubtelResult.Status !== "0") {
+    if (hubtelResult.status !== 0 && hubtelResult.status !== "0") {
          console.error("Hubtel API Error:", hubtelResult);
-         throw new Error(hubtelResult.Message || `Hubtel API request failed with status ${hubtelResult.Status}.`);
+         throw new Error(hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.status}.`);
     }
     
     await addDoc(collection(db, 'smsHistory'), {
@@ -534,7 +534,3 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
-
-    
-
-    
