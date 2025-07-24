@@ -91,21 +91,19 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
-    const recipientsArray = Array.from(allRecipientNumbers);
+    const recipientsString = Array.from(allRecipientNumbers).join(',');
     
-    const payload = {
-      From: senderId,
-      To: recipientsArray,
-      Content: message,
-    };
-    
-    const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Basic ' + btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`),
-      },
-      body: JSON.stringify(payload),
+    const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
+    const params = new URLSearchParams({
+        clientid: apiKeys.clientId,
+        clientsecret: apiKeys.clientSecret,
+        from: senderId,
+        to: recipientsString,
+        content: message,
+    });
+
+    const hubtelResponse = await fetch(`${baseUrl}?${params.toString()}`, {
+      method: 'GET',
     });
 
     const hubtelResponseText = await hubtelResponse.text();
@@ -117,16 +115,15 @@ export async function sendSms(formData: FormData) {
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
-    // Per Hubtel docs for POST requests, a 201 Created with a jobId indicates success.
-    if (hubtelResponse.status !== 201 || !hubtelResult.jobId) {
+    if (hubtelResult.Status !== 0 && hubtelResult.status !== 0) {
          console.error("Hubtel API Error:", hubtelResult);
-         const errorMessage = hubtelResult.Message || `Hubtel API request failed.`;
+         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.Status || hubtelResult.status}`;
          throw new Error(errorMessage);
     }
       
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
-      recipientCount: recipientsArray.length,
+      recipientCount: allRecipientNumbers.size,
       recipientGroups: recipientGroupNames,
       message,
       status: 'Sent',
@@ -140,6 +137,8 @@ export async function sendSms(formData: FormData) {
   } catch (error) {
     console.error('SMS sending error:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
@@ -148,12 +147,12 @@ export async function sendSms(formData: FormData) {
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date(),
-      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      errorMessage: errorMessage
     });
 
     revalidatePath('/history');
 
-    return { success: false, error: error instanceof Error ? error.message : 'An unknown error occurred.' };
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -538,3 +537,5 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
+
+    
