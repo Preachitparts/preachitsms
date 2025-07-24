@@ -10,6 +10,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Folder, MessageSquareText, Calendar, Loader2 } from 'lucide-react';
+import { sendBulkSms, sendDashboardSms } from './actions';
 
 function StatCard({ title, value, icon: Icon, isLoading }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean }) {
   return (
@@ -110,6 +111,7 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
             <MessageComposer 
               selectedContacts={Array.from(selectedContacts)}
               selectedGroups={Array.from(selectedGroups)}
+              sendAction={isBulk ? sendBulkSms : sendDashboardSms}
             />
           </div>
         </div>
@@ -117,3 +119,5 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
     </MainLayout>
   );
 }
+
+    

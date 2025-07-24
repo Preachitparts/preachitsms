@@ -22,14 +22,10 @@ async function getApiKeys() {
     return null;
 }
 
-export async function sendSms(formData: FormData) {
-  const smsData = {
-      senderId: formData.get('senderId') as string,
-      message: formData.get('message') as string,
-      selectedContacts: formData.getAll('selectedContacts').map(String),
-      selectedGroups: formData.getAll('selectedGroups').map(String)
-  };
-
+async function executeSmsSend(
+    smsData: z.infer<typeof smsSchema>,
+    isBulk: boolean
+) {
   const parsed = smsSchema.safeParse(smsData);
 
   if (!parsed.success) {
@@ -100,7 +96,7 @@ export async function sendSms(formData: FormData) {
     let hubtelResponse;
     const recipientsArray = Array.from(allRecipientNumbers);
 
-    if (recipientsArray.length > 1) {
+    if (recipientsArray.length > 1 || isBulk) {
         // Use POST for bulk messaging
         const payload = {
             From: senderId,
@@ -120,15 +116,15 @@ export async function sendSms(formData: FormData) {
         // Use GET for single message
         const recipientsString = recipientsArray[0];
         const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
-        const queryParams = [
-            `clientid=${encodeURIComponent(apiKeys.clientId)}`,
-            `clientsecret=${encodeURIComponent(apiKeys.clientSecret)}`,
-            `from=${encodeURIComponent(senderId)}`,
-            `to=${recipientsString}`,
-            `content=${encodeURIComponent(message)}`,
-        ].join('&');
+        const queryParams = new URLSearchParams({
+            clientid: apiKeys.clientId,
+            clientsecret: apiKeys.clientSecret,
+            from: senderId,
+            to: recipientsString,
+            content: message,
+        });
         
-        const fullUrl = `${baseUrl}?${queryParams}`;
+        const fullUrl = `${baseUrl}?${queryParams.toString()}`;
         hubtelResponse = await fetch(fullUrl, { method: 'GET' });
     }
 
@@ -187,6 +183,27 @@ export async function sendSms(formData: FormData) {
     return { success: false, error: errorMessage };
   }
 }
+
+export async function sendDashboardSms(formData: FormData) {
+    const smsData = {
+      senderId: formData.get('senderId') as string,
+      message: formData.get('message') as string,
+      selectedContacts: formData.getAll('selectedContacts').map(String),
+      selectedGroups: formData.getAll('selectedGroups').map(String)
+    };
+    return executeSmsSend(smsData, false);
+}
+
+export async function sendBulkSms(formData: FormData) {
+    const smsData = {
+      senderId: formData.get('senderId') as string,
+      message: formData.get('message') as string,
+      selectedContacts: formData.getAll('selectedContacts').map(String),
+      selectedGroups: formData.getAll('selectedGroups').map(String)
+    };
+    return executeSmsSend(smsData, true);
+}
+
 
 export async function deleteSmsHistory(ids: string[]) {
     try {
@@ -569,3 +586,5 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
+
+    

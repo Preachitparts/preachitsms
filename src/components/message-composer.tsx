@@ -7,18 +7,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { sendSms } from '@/app/actions';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
 const MAX_CHARS = 160;
 
+type SendSmsAction = (formData: FormData) => Promise<{success: boolean, error?: string}>;
+
 interface MessageComposerProps {
     selectedContacts: string[];
     selectedGroups: string[];
+    sendAction: SendSmsAction;
 }
 
-export function MessageComposer({ selectedContacts, selectedGroups }: MessageComposerProps) {
+export function MessageComposer({ selectedContacts, selectedGroups, sendAction }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [senderId, setSenderId] = useState('Preach It');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -48,7 +50,7 @@ export function MessageComposer({ selectedContacts, selectedGroups }: MessageCom
     selectedGroups.forEach(id => formData.append('selectedGroups', id));
 
     startTransition(async () => {
-      const result = await sendSms(formData);
+      const result = await sendAction(formData);
       if (result.success) {
         toast({
           title: 'Success!',
@@ -129,3 +131,5 @@ export function MessageComposer({ selectedContacts, selectedGroups }: MessageCom
     </Card>
   );
 }
+
+    
