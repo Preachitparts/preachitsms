@@ -38,18 +38,19 @@ export async function sendSms(formData: FormData) {
 
   const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-  const groupMapForLogging = new Map<string, string>();
+  // This part is for logging only, so we fetch the names before the main try block.
+  let recipientGroupNames: string[] = [];
   if (selectedGroups.length > 0) {
       try {
         const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', selectedGroups));
         const groupsSnapshot = await getDocs(groupsQuery);
-        groupsSnapshot.docs.forEach(d => groupMapForLogging.set(d.id, d.data().name));
+        recipientGroupNames = groupsSnapshot.docs.map(d => d.data().name);
       } catch (e) {
          console.error("Could not fetch group names for logging", e);
+         // Do not block sending if this fails, just log the error.
       }
   }
-  const recipientGroupNames = selectedGroups.map(gid => groupMapForLogging.get(gid)).filter(Boolean) as string[];
-
+  
   try {
     const apiKeys = await getApiKeys();
     if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
@@ -58,32 +59,38 @@ export async function sendSms(formData: FormData) {
 
     const allRecipientNumbers = new Set<string>();
 
-    if (selectedContacts.length > 0 || selectedGroups.length > 0) {
-        const [contactsSnapshot, groupsSnapshot] = await Promise.all([
-            getDocs(query(collection(db, 'contacts'))),
-            getDocs(query(collection(db, 'groups')))
-        ]);
-        const contactMap = new Map(contactsSnapshot.docs.map(d => [d.id, d.data()]));
-        const groupMap = new Map(groupsSnapshot.docs.map(d => [d.id, d.data()]));
-
-        selectedContacts.forEach(contactId => {
-            const contact = contactMap.get(contactId);
+    if (selectedContacts.length > 0) {
+        const contactsQuery = query(collection(db, 'contacts'), where('__name__', 'in', selectedContacts));
+        const contactsSnapshot = await getDocs(contactsQuery);
+        contactsSnapshot.forEach(doc => {
+            const contact = doc.data();
             if (contact?.phone) {
                 allRecipientNumbers.add(contact.phone);
             }
         });
+    }
 
-        selectedGroups.forEach(groupId => {
-            const group = groupMap.get(groupId);
+    if (selectedGroups.length > 0) {
+        const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', selectedGroups));
+        const groupsSnapshot = await getDocs(groupsQuery);
+        const memberIds = new Set<string>();
+        groupsSnapshot.forEach(doc => {
+            const group = doc.data();
             if (group?.members) {
-                group.members.forEach((memberId: string) => {
-                    const member = contactMap.get(memberId);
-                    if (member?.phone) {
-                        allRecipientNumbers.add(member.phone);
-                    }
-                });
+                group.members.forEach((memberId: string) => memberIds.add(memberId));
             }
         });
+
+        if (memberIds.size > 0) {
+            const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', Array.from(memberIds)));
+            const membersSnapshot = await getDocs(membersQuery);
+            membersSnapshot.forEach(doc => {
+                const member = doc.data();
+                if (member?.phone) {
+                    allRecipientNumbers.add(member.phone);
+                }
+            });
+        }
     }
 
 
@@ -93,20 +100,19 @@ export async function sendSms(formData: FormData) {
     
     const recipientsString = Array.from(allRecipientNumbers).join(',');
     
+    // Manual URL construction to prevent comma encoding
     const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
-    const params = new URLSearchParams({
-        clientid: apiKeys.clientId,
-        clientsecret: apiKeys.clientSecret,
-        from: senderId,
-        to: recipientsString,
-        content: message,
-    });
+    const queryParams = [
+        `clientid=${encodeURIComponent(apiKeys.clientId)}`,
+        `clientsecret=${encodeURIComponent(apiKeys.clientSecret)}`,
+        `from=${encodeURIComponent(senderId)}`,
+        `to=${recipientsString}`, // Do not encode this part
+        `content=${encodeURIComponent(message)}`,
+    ].join('&');
+    
+    const fullUrl = `${baseUrl}?${queryParams}`;
 
-    const fullUrl = `${baseUrl}?${params.toString()}`;
-
-    const hubtelResponse = await fetch(fullUrl, {
-      method: 'GET',
-    });
+    const hubtelResponse = await fetch(fullUrl, { method: 'GET' });
 
     const hubtelResponseText = await hubtelResponse.text();
     let hubtelResult;
@@ -119,7 +125,7 @@ export async function sendSms(formData: FormData) {
     
     if (hubtelResult.status !== 0 && hubtelResult.Status !== 0) {
          console.error("Hubtel API Error:", hubtelResult);
-         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.status !== undefined ? hubtelResult.status : hubtelResult.Status}`;
+         const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed. Full API Response: ${JSON.stringify(hubtelResult)}`;
          throw new Error(errorMessage);
     }
       
@@ -141,10 +147,11 @@ export async function sendSms(formData: FormData) {
     
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
 
+    // This catch block is now robust: it doesn't make any new async calls.
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
-      recipientGroups: recipientGroupNames,
+      recipientGroups: recipientGroupNames, // Use the names fetched outside the try block
       message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
@@ -539,5 +546,3 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
-
-    
