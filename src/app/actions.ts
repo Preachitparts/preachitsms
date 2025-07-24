@@ -38,7 +38,6 @@ export async function sendSms(formData: FormData) {
 
   const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-  // This part is for logging only, so we fetch the names before the main try block.
   let recipientGroupNames: string[] = [];
   if (selectedGroups.length > 0) {
       try {
@@ -47,7 +46,6 @@ export async function sendSms(formData: FormData) {
         recipientGroupNames = groupsSnapshot.docs.map(d => d.data().name);
       } catch (e) {
          console.error("Could not fetch group names for logging", e);
-         // Do not block sending if this fails, just log the error.
       }
   }
   
@@ -82,7 +80,8 @@ export async function sendSms(formData: FormData) {
         });
 
         if (memberIds.size > 0) {
-            const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', Array.from(memberIds)));
+            const uniqueMemberIds = Array.from(memberIds);
+            const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', uniqueMemberIds));
             const membersSnapshot = await getDocs(membersQuery);
             membersSnapshot.forEach(doc => {
                 const member = doc.data();
@@ -98,21 +97,40 @@ export async function sendSms(formData: FormData) {
         return { success: false, error: "No recipients selected or recipients have no phone numbers." };
     }
     
-    const recipientsString = Array.from(allRecipientNumbers).join(',');
-    
-    // Manual URL construction to prevent comma encoding
-    const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
-    const queryParams = [
-        `clientid=${encodeURIComponent(apiKeys.clientId)}`,
-        `clientsecret=${encodeURIComponent(apiKeys.clientSecret)}`,
-        `from=${encodeURIComponent(senderId)}`,
-        `to=${recipientsString}`, // Do not encode this part
-        `content=${encodeURIComponent(message)}`,
-    ].join('&');
-    
-    const fullUrl = `${baseUrl}?${queryParams}`;
+    let hubtelResponse;
+    const recipientsArray = Array.from(allRecipientNumbers);
 
-    const hubtelResponse = await fetch(fullUrl, { method: 'GET' });
+    if (recipientsArray.length > 1) {
+        // Use POST for bulk messaging
+        const payload = {
+            From: senderId,
+            To: recipientsArray,
+            Content: message,
+        };
+        hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Basic ' + btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`),
+            },
+            body: JSON.stringify(payload),
+        });
+
+    } else {
+        // Use GET for single message
+        const recipientsString = recipientsArray[0];
+        const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
+        const queryParams = [
+            `clientid=${encodeURIComponent(apiKeys.clientId)}`,
+            `clientsecret=${encodeURIComponent(apiKeys.clientSecret)}`,
+            `from=${encodeURIComponent(senderId)}`,
+            `to=${recipientsString}`,
+            `content=${encodeURIComponent(message)}`,
+        ].join('&');
+        
+        const fullUrl = `${baseUrl}?${queryParams}`;
+        hubtelResponse = await fetch(fullUrl, { method: 'GET' });
+    }
 
     const hubtelResponseText = await hubtelResponse.text();
     let hubtelResult;
@@ -123,7 +141,13 @@ export async function sendSms(formData: FormData) {
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
-    if (hubtelResult.status !== 0 && hubtelResult.Status !== 0) {
+    if (hubtelResponse.status !== 200 && hubtelResponse.status !== 201) {
+         console.error("Hubtel API Error:", hubtelResult);
+         const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed. Full API Response: ${JSON.stringify(hubtelResult)}`;
+         throw new Error(errorMessage);
+    }
+
+    if (hubtelResult.status !== 0 && hubtelResult.Status !== 0 && !hubtelResult.jobId) {
          console.error("Hubtel API Error:", hubtelResult);
          const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed. Full API Response: ${JSON.stringify(hubtelResult)}`;
          throw new Error(errorMessage);
@@ -147,11 +171,10 @@ export async function sendSms(formData: FormData) {
     
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
 
-    // This catch block is now robust: it doesn't make any new async calls.
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: 0, 
-      recipientGroups: recipientGroupNames, // Use the names fetched outside the try block
+      recipientGroups: recipientGroupNames,
       message: smsData.message,
       status: 'Failed',
       date: new Date().toISOString().split('T')[0],
