@@ -30,7 +30,7 @@ export default async function MembersPage() {
                 </CardHeader>
             </Card>
             <Card>
-                 <CardContent className="p-0 sm:p-6 sm:pt-0 overflow-x-auto">
+                 <CardContent className="p-0">
                     <MembersClient initialMembers={initialMembers} initialGroups={initialGroups} />
                  </CardContent>
             </Card>

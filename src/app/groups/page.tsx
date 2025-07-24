@@ -23,7 +23,7 @@ export default async function GroupsPage() {
             </CardHeader>
         </Card>
         <Card>
-            <CardContent className="p-0 sm:p-6 sm:pt-0 overflow-x-auto">
+            <CardContent className="p-0">
               <GroupsClient initialGroups={groups} />
             </CardContent>
         </Card>

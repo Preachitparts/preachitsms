@@ -20,7 +20,7 @@ interface MemberWithGroupNames extends Contact {
 export function MembersTable({ members, allGroups }: { members: MemberWithGroupNames[], allGroups: Group[] }) {
     if (members.length === 0) {
         return (
-            <div className="text-center text-muted-foreground py-10">
+            <div className="text-center text-muted-foreground p-10">
                 <p>No members yet.</p>
                 <p className="text-sm">Click &quot;Add Member&quot; to get started.</p>
             </div>
@@ -28,39 +28,41 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
     }
 
   return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Groups</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {members.map((member) => (
-            <TableRow key={member.id}>
-              <TableCell className="font-medium whitespace-nowrap">{member.name}</TableCell>
-              <TableCell className="whitespace-nowrap">{member.phone}</TableCell>
-              <TableCell className="whitespace-nowrap">{member.location}</TableCell>
-              <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <EditMemberButton member={member} groups={allGroups} />
-                    <DeleteMemberButton memberId={member.id} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Groups</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {members.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell className="font-medium whitespace-nowrap">{member.name}</TableCell>
+                <TableCell className="whitespace-nowrap">{member.phone}</TableCell>
+                <TableCell className="whitespace-nowrap">{member.location}</TableCell>
+                <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <EditMemberButton member={member} groups={allGroups} />
+                      <DeleteMemberButton memberId={member.id} />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
   );
 }

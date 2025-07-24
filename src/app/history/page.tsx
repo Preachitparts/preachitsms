@@ -1,6 +1,6 @@
 
 import { MainLayout } from '@/components/main-layout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { HistoryClient } from '@/components/history-client';
 import { getSmsHistory, getGroups } from '@/lib/data';
 

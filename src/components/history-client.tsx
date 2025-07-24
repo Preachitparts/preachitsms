@@ -100,7 +100,7 @@ export function HistoryClient({ initialHistory, initialGroups }: { initialHistor
 
     return (
         <Card>
-            <CardContent className="p-0 sm:p-6">
+            <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     <Popover>
                         <PopoverTrigger asChild>
@@ -172,8 +172,8 @@ export function HistoryClient({ initialHistory, initialGroups }: { initialHistor
                                         onCheckedChange={() => handleSelectRow(record.id)}
                                     />
                                 </TableCell>
-                                <TableCell className="font-medium">{record.senderId || '-'}</TableCell>
-                                <TableCell>{record.recipientCount}</TableCell>
+                                <TableCell className="font-medium whitespace-nowrap">{record.senderId || '-'}</TableCell>
+                                <TableCell className="whitespace-nowrap">{record.recipientCount}</TableCell>
                                 <TableCell className="max-w-[150px] truncate">{record.recipientGroups?.join(', ')}</TableCell>
                                 <TableCell className="max-w-xs truncate">{record.message}</TableCell>
                                 <TableCell className="text-center">
@@ -186,7 +186,7 @@ export function HistoryClient({ initialHistory, initialGroups }: { initialHistor
                                     {record.status}
                                 </Badge>
                                 </TableCell>
-                                <TableCell className="text-right">{record.date}</TableCell>
+                                <TableCell className="text-right whitespace-nowrap">{record.date}</TableCell>
                             </TableRow>
                         ))}
                         </TableBody>
