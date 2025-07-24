@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { MessageSquareText, LayoutDashboard, History, Users, Folder, Settings, Moon, Sun, Menu } from 'lucide-react';
+import { MessageSquareText, LayoutDashboard, History, Users, Folder, Settings, Moon, Sun, Menu, MessageSquarePlus } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -30,6 +30,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     switch (pathname) {
       case '/':
         return 'Dashboard';
+      case '/bulk-sms':
+        return 'Bulk SMS';
       case '/history':
         return 'History';
       case '/members':
@@ -60,6 +62,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/">
                   <LayoutDashboard />
                   Dashboard
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/bulk-sms'}>
+                <Link href="/bulk-sms">
+                  <MessageSquarePlus />
+                  Bulk SMS
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

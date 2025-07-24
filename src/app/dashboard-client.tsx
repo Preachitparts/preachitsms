@@ -33,9 +33,10 @@ interface DashboardClientProps {
   initialContacts: Contact[];
   initialGroups: Group[];
   initialStats: DashboardStats;
+  isBulk?: boolean;
 }
 
-export function DashboardClient({ initialContacts, initialGroups, initialStats }: DashboardClientProps) {
+export function DashboardClient({ initialContacts, initialGroups, initialStats, isBulk = false }: DashboardClientProps) {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [stats, setStats] = useState<DashboardStats | null>(initialStats);
@@ -85,12 +86,14 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats }
   return (
      <MainLayout>
       <div className="flex flex-col gap-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Total Sent" value={stats?.smsCount ?? 0} icon={MessageSquareText} isLoading={isLoading} />
-            <StatCard title="Total Members" value={contacts.length} icon={Users} isLoading={false} />
-            <StatCard title="Total Groups" value={groups.length} icon={Folder} isLoading={false} />
-            <StatCard title="Last Sent" value={stats?.lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
-        </div>
+        {!isBulk && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Total Sent" value={stats?.smsCount ?? 0} icon={MessageSquareText} isLoading={isLoading} />
+              <StatCard title="Total Members" value={contacts.length} icon={Users} isLoading={false} />
+              <StatCard title="Total Groups" value={groups.length} icon={Folder} isLoading={false} />
+              <StatCard title="Last Sent" value={stats?.lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
+          </div>
+        )}
         <div className="grid h-full gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <ContactSelector 
