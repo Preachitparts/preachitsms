@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { deleteSmsHistory } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from './ui/card';
 
 
 export function HistoryClient({ initialHistory, initialGroups }: { initialHistory: SmsRecord[], initialGroups: Group[] }) {
@@ -98,98 +99,100 @@ export function HistoryClient({ initialHistory, initialGroups }: { initialHistor
     }
 
     return (
-        <div className="w-full">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-full sm:w-[280px] justify-start text-left font-normal",
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>Filter by date...</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
-
-                <Select value={groupFilter} onValueChange={setGroupFilter}>
-                    <SelectTrigger className="w-full sm:w-[280px]">
-                        <SelectValue placeholder="Filter by group..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Groups</SelectItem>
-                        {initialGroups.map(group => (
-                            <SelectItem key={group.id} value={group.name}>{group.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {selectedRows.size > 0 && (
-                     <Button variant="destructive" onClick={handleDelete} disabled={isPending} className="w-full sm:w-auto">
-                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                        Delete ({selectedRows.size})
-                    </Button>
-                )}
-            </div>
-            <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead padding="checkbox">
-                            <Checkbox
-                                checked={filteredHistory.length > 0 && selectedRows.size === filteredHistory.length}
-                                indeterminate={selectedRows.size > 0 && selectedRows.size < filteredHistory.length}
-                                onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
-                            />
-                        </TableHead>
-                        <TableHead>Sender ID</TableHead>
-                        <TableHead>Recipients</TableHead>
-                        <TableHead>Groups</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
-                        <TableHead className="text-right">Date</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {filteredHistory.map((record) => (
-                        <TableRow key={record.id} data-state={selectedRows.has(record.id) && "selected"}>
-                            <TableCell padding="checkbox">
-                                <Checkbox
-                                    checked={selectedRows.has(record.id)}
-                                    onCheckedChange={() => handleSelectRow(record.id)}
-                                />
-                            </TableCell>
-                            <TableCell className="font-medium">{record.senderId || '-'}</TableCell>
-                            <TableCell>{record.recipientCount}</TableCell>
-                            <TableCell className="max-w-[150px] truncate">{record.recipientGroups?.join(', ')}</TableCell>
-                            <TableCell className="max-w-xs truncate">{record.message}</TableCell>
-                            <TableCell className="text-center">
-                            <Badge
-                                variant={
-                                record.status === 'Sent' ? 'default' : record.status === 'Failed' ? 'destructive' : 'secondary'
-                                }
-                                className={cn(record.status === 'Sent' && 'bg-green-600 hover:bg-green-700')}
+        <Card>
+            <CardContent className="p-0 sm:p-6">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full sm:w-[280px] justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
                             >
-                                {record.status}
-                            </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{record.date}</TableCell>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP") : <span>Filter by date...</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    <Select value={groupFilter} onValueChange={setGroupFilter}>
+                        <SelectTrigger className="w-full sm:w-[280px]">
+                            <SelectValue placeholder="Filter by group..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Groups</SelectItem>
+                            {initialGroups.map(group => (
+                                <SelectItem key={group.id} value={group.name}>{group.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {selectedRows.size > 0 && (
+                         <Button variant="destructive" onClick={handleDelete} disabled={isPending} className="w-full sm:w-auto">
+                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Delete ({selectedRows.size})
+                        </Button>
+                    )}
+                </div>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead padding="checkbox">
+                                <Checkbox
+                                    checked={filteredHistory.length > 0 && selectedRows.size === filteredHistory.length}
+                                    indeterminate={selectedRows.size > 0 && selectedRows.size < filteredHistory.length}
+                                    onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                                />
+                            </TableHead>
+                            <TableHead>Sender ID</TableHead>
+                            <TableHead>Recipients</TableHead>
+                            <TableHead>Groups</TableHead>
+                            <TableHead>Message</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-right">Date</TableHead>
                         </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
-            </div>
-        </div>
+                        </TableHeader>
+                        <TableBody>
+                        {filteredHistory.map((record) => (
+                            <TableRow key={record.id} data-state={selectedRows.has(record.id) && "selected"}>
+                                <TableCell padding="checkbox">
+                                    <Checkbox
+                                        checked={selectedRows.has(record.id)}
+                                        onCheckedChange={() => handleSelectRow(record.id)}
+                                    />
+                                </TableCell>
+                                <TableCell className="font-medium">{record.senderId || '-'}</TableCell>
+                                <TableCell>{record.recipientCount}</TableCell>
+                                <TableCell className="max-w-[150px] truncate">{record.recipientGroups?.join(', ')}</TableCell>
+                                <TableCell className="max-w-xs truncate">{record.message}</TableCell>
+                                <TableCell className="text-center">
+                                <Badge
+                                    variant={
+                                    record.status === 'Sent' ? 'default' : record.status === 'Failed' ? 'destructive' : 'secondary'
+                                    }
+                                    className={cn(record.status === 'Sent' && 'bg-green-600 hover:bg-green-700')}
+                                >
+                                    {record.status}
+                                </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{record.date}</TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
     )
 }

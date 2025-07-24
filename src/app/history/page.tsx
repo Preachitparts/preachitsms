@@ -14,15 +14,15 @@ export default async function HistoryPage() {
 
     return (
         <MainLayout>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">SMS History</CardTitle>
-                    <CardDescription>A log of all messages sent from the platform.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <HistoryClient initialHistory={initialHistory} initialGroups={initialGroups} />
-                </CardContent>
-            </Card>
+            <div className="flex flex-col gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline">SMS History</CardTitle>
+                        <CardDescription>A log of all messages sent from the platform.</CardDescription>
+                    </CardHeader>
+                </Card>
+                 <HistoryClient initialHistory={initialHistory} initialGroups={initialGroups} />
+            </div>
         </MainLayout>
     );
 }

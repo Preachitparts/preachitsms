@@ -28,7 +28,6 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
     }
 
   return (
-    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -63,6 +62,5 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
           ))}
         </TableBody>
       </Table>
-    </div>
   );
 }

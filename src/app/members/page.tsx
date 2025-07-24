@@ -16,21 +16,25 @@ export default async function MembersPage() {
 
   return (
     <MainLayout>
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle className="font-headline">Members</CardTitle>
-            <CardDescription>Manage your contacts.</CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <ImportCsvButton />
-            <AddMemberButton groups={initialGroups} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <MembersClient initialMembers={initialMembers} initialGroups={initialGroups} />
-        </CardContent>
-      </Card>
+        <div className="flex flex-col gap-4">
+            <Card>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle className="font-headline">Members</CardTitle>
+                    <CardDescription>Manage your contacts.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <ImportCsvButton />
+                    <AddMemberButton groups={initialGroups} />
+                  </div>
+                </CardHeader>
+            </Card>
+            <Card>
+                 <CardContent className="p-0 sm:p-6 sm:pt-0 overflow-x-auto">
+                    <MembersClient initialMembers={initialMembers} initialGroups={initialGroups} />
+                 </CardContent>
+            </Card>
+        </div>
     </MainLayout>
   );
 }

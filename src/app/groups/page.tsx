@@ -1,3 +1,4 @@
+
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getGroupsWithMemberCounts } from '@/lib/data';
@@ -11,18 +12,22 @@ export default async function GroupsPage() {
 
   return (
     <MainLayout>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="font-headline">Groups</CardTitle>
-            <CardDescription>Organize your members into groups.</CardDescription>
-          </div>
-          <AddGroupButton />
-        </CardHeader>
-        <CardContent>
-          <GroupsClient initialGroups={groups} />
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-4">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-headline">Groups</CardTitle>
+                <CardDescription>Organize your members into groups.</CardDescription>
+              </div>
+              <AddGroupButton />
+            </CardHeader>
+        </Card>
+        <Card>
+            <CardContent className="p-0 sm:p-6 sm:pt-0 overflow-x-auto">
+              <GroupsClient initialGroups={groups} />
+            </CardContent>
+        </Card>
+      </div>
     </MainLayout>
   );
 }
