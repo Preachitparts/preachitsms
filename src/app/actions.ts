@@ -11,6 +11,7 @@ const smsSchema = z.object({
   message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message cannot be more than 160 characters.'),
   selectedContacts: z.array(z.string()),
   selectedGroups: z.array(z.string()),
+  manualNumbers: z.array(z.string()),
 });
 
 async function getApiKeys() {
@@ -32,7 +33,7 @@ async function executeSmsSend(
     return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
+  const { message, senderId, selectedContacts, selectedGroups, manualNumbers } = parsed.data;
 
   let recipientGroupNames: string[] = [];
   if (selectedGroups.length > 0) {
@@ -51,7 +52,7 @@ async function executeSmsSend(
         return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
     }
 
-    const allRecipientNumbers = new Set<string>();
+    const allRecipientNumbers = new Set<string>(manualNumbers);
 
     if (selectedContacts.length > 0) {
         const contactsQuery = query(collection(db, 'contacts'), where('__name__', 'in', selectedContacts));
@@ -114,17 +115,11 @@ async function executeSmsSend(
 
     } else {
         // Use GET for single message
-        const recipientsString = recipientsArray[0];
+        const recipientsString = recipientsArray.join(',');
         const baseUrl = 'https://sms.hubtel.com/v1/messages/send';
-        const queryParams = new URLSearchParams({
-            clientid: apiKeys.clientId,
-            clientsecret: apiKeys.clientSecret,
-            from: senderId,
-            to: recipientsString,
-            content: message,
-        });
+        const queryParams = `?clientid=${encodeURIComponent(apiKeys.clientId)}&clientsecret=${encodeURIComponent(apiKeys.clientSecret)}&from=${encodeURIComponent(senderId)}&to=${encodeURIComponent(recipientsString)}&content=${encodeURIComponent(message)}`;
         
-        const fullUrl = `${baseUrl}?${queryParams.toString()}`;
+        const fullUrl = `${baseUrl}${queryParams}`;
         hubtelResponse = await fetch(fullUrl, { method: 'GET' });
     }
 
@@ -189,7 +184,8 @@ export async function sendDashboardSms(formData: FormData) {
       senderId: formData.get('senderId') as string,
       message: formData.get('message') as string,
       selectedContacts: formData.getAll('selectedContacts').map(String),
-      selectedGroups: formData.getAll('selectedGroups').map(String)
+      selectedGroups: formData.getAll('selectedGroups').map(String),
+      manualNumbers: formData.getAll('manualNumbers').map(String),
     };
     return executeSmsSend(smsData, false);
 }
@@ -199,7 +195,8 @@ export async function sendBulkSms(formData: FormData) {
       senderId: formData.get('senderId') as string,
       message: formData.get('message') as string,
       selectedContacts: formData.getAll('selectedContacts').map(String),
-      selectedGroups: formData.getAll('selectedGroups').map(String)
+      selectedGroups: formData.getAll('selectedGroups').map(String),
+      manualNumbers: formData.getAll('manualNumbers').map(String)
     };
     return executeSmsSend(smsData, true);
 }
@@ -586,5 +583,3 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
         return { success: false, error: 'An unexpected error occurred during CSV import.' };
     }
 }
-
-    

@@ -44,6 +44,7 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
   const [isLoading, setIsLoading] = useState(!initialStats); 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
+  const [manualNumbers, setManualNumbers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsLoading(true);
@@ -105,12 +106,16 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
               setSelectedContacts={setSelectedContacts}
               selectedGroups={selectedGroups}
               setSelectedGroups={setSelectedGroups}
+              manualNumbers={manualNumbers}
+              setManualNumbers={setManualNumbers}
+              allowManualEntry={!isBulk}
             />
           </div>
           <div className="lg:col-span-3">
             <MessageComposer 
               selectedContacts={Array.from(selectedContacts)}
               selectedGroups={Array.from(selectedGroups)}
+              manualNumbers={Array.from(manualNumbers)}
               sendAction={isBulk ? sendBulkSms : sendDashboardSms}
             />
           </div>
@@ -119,5 +124,3 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
     </MainLayout>
   );
 }
-
-    

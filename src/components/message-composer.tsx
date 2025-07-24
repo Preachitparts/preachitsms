@@ -17,10 +17,11 @@ type SendSmsAction = (formData: FormData) => Promise<{success: boolean, error?: 
 interface MessageComposerProps {
     selectedContacts: string[];
     selectedGroups: string[];
+    manualNumbers: string[];
     sendAction: SendSmsAction;
 }
 
-export function MessageComposer({ selectedContacts, selectedGroups, sendAction }: MessageComposerProps) {
+export function MessageComposer({ selectedContacts, selectedGroups, manualNumbers, sendAction }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [senderId, setSenderId] = useState('Preach It');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -48,6 +49,7 @@ export function MessageComposer({ selectedContacts, selectedGroups, sendAction }
   const handleSend = async (formData: FormData) => {
     selectedContacts.forEach(id => formData.append('selectedContacts', id));
     selectedGroups.forEach(id => formData.append('selectedGroups', id));
+    manualNumbers.forEach(num => formData.append('manualNumbers', num));
 
     startTransition(async () => {
       const result = await sendAction(formData);
@@ -131,5 +133,3 @@ export function MessageComposer({ selectedContacts, selectedGroups, sendAction }
     </Card>
   );
 }
-
-    
