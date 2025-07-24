@@ -19,12 +19,23 @@ import { Button } from '@/components/ui/button';
 import { MessageSquareText, LayoutDashboard, History, Users, Folder, Settings, Moon, Sun, Menu, MessageSquarePlus } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ThemeContext } from './theme-provider';
+import { cn } from '@/lib/utils';
 
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { setTheme, theme } = useTheme();
   const isMobile = useIsMobile();
+  const themeContext = React.useContext(ThemeContext);
+
+  if (!themeContext) {
+    // This can happen on first render before context is available.
+    // You can return a loader or null
+    return null; 
+  }
+
+  const { sidebarPosition } = themeContext;
 
   const getPageTitle = () => {
     switch (pathname) {
@@ -113,13 +124,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </>
   )
 
-  return (
-    <SidebarProvider>
-      <div className="flex min-h-screen">
-         <Sidebar>
-            {sidebarContent}
-         </Sidebar>
-        <div className="flex flex-col w-full">
+  const MainContent = (
+     <div className="flex flex-col w-full">
             <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6 sticky top-0 z-30">
                  {isMobile && (
                      <Sheet>
@@ -156,6 +162,18 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 {children}
             </main>
         </div>
+  )
+
+  return (
+    <SidebarProvider>
+      <div className={cn(
+          "flex min-h-screen",
+          sidebarPosition === 'right' && 'flex-row-reverse'
+        )}>
+         <Sidebar>
+            {sidebarContent}
+         </Sidebar>
+         {MainContent}
       </div>
     </SidebarProvider>
   );

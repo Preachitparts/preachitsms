@@ -4,9 +4,11 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Label } from './ui/label';
-import { Paintbrush, Type, TextCursor, Palette } from 'lucide-react';
+import { Paintbrush, Type, TextCursor, Palette, PanelLeft, PanelRight } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 const PRIMARY_COLORS = [
   { name: 'Default', value: '283 44% 50%' },
@@ -51,12 +53,18 @@ export function ThemeCustomizer() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [fontSize, setFontSize] = useState(16);
+  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>('left');
+
 
   useEffect(() => {
     setMounted(true);
     const savedFontSize = localStorage.getItem('theme-font-size');
     if (savedFontSize) {
         setFontSize(parseInt(savedFontSize, 10));
+    }
+    const savedSidebarPos = localStorage.getItem('theme-sidebar-position') as 'left' | 'right';
+    if(savedSidebarPos) {
+        setSidebarPosition(savedSidebarPos);
     }
   }, []);
 
@@ -84,6 +92,12 @@ export function ThemeCustomizer() {
     localStorage.setItem(`theme-font-${type}`, fontValue);
     dispatchThemeChange();
   };
+
+  const handleSidebarPositionChange = (position: 'left' | 'right') => {
+      setSidebarPosition(position);
+      localStorage.setItem('theme-sidebar-position', position);
+      dispatchThemeChange();
+  }
   
   if (!mounted) {
     return null;
@@ -91,6 +105,34 @@ export function ThemeCustomizer() {
 
   return (
     <div className="space-y-6">
+        <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <Paintbrush className="h-5 w-5" />
+                <h3 className="font-medium">Appearance</h3>
+            </div>
+             <div className="space-y-2">
+                <Label>Sidebar Position</Label>
+                <div className="flex gap-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSidebarPositionChange('left')}
+                        className={cn(sidebarPosition === 'left' && 'ring-2 ring-ring')}
+                    >
+                        <PanelLeft className="mr-2" /> Left
+                    </Button>
+                     <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleSidebarPositionChange('right')}
+                        className={cn(sidebarPosition === 'right' && 'ring-2 ring-ring')}
+                    >
+                        <PanelRight className="mr-2" /> Right
+                    </Button>
+                </div>
+            </div>
+        </div>
+
         <div className="space-y-4">
             <div className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />

@@ -23,10 +23,20 @@ const FONT_URLS: Record<string, string> = {
     oswald: 'https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap',
 };
 
+type CustomThemeProviderProps = ThemeProviderProps & {
+    children: React.ReactNode;
+};
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+export const ThemeContext = React.createContext<{
+    sidebarPosition: 'left' | 'right';
+    setSidebarPosition: (pos: 'left' | 'right') => void;
+} | null>(null);
+
+
+export function ThemeProvider({ children, ...props }: CustomThemeProviderProps) {
   const [bodyFont, setBodyFont] = React.useState('inter');
   const [headlineFont, setHeadlineFont] = React.useState('space_grotesk');
+  const [sidebarPosition, setSidebarPosition] = React.useState<'left' | 'right'>('left');
 
   React.useEffect(() => {
     const handleThemeChange = () => {
@@ -34,9 +44,11 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
         const storedHeadlineFont = localStorage.getItem('theme-font-headline') || 'space_grotesk';
         const storedFontSize = localStorage.getItem('theme-font-size') || '16';
         const storedFgColor = localStorage.getItem('theme-color-foreground');
+        const storedSidebarPos = localStorage.getItem('theme-sidebar-position') as 'left' | 'right' || 'left';
 
         setBodyFont(storedBodyFont);
         setHeadlineFont(storedHeadlineFont);
+        setSidebarPosition(storedSidebarPos);
         
         document.documentElement.style.setProperty('--font-size-base', `${storedFontSize}px`);
         
@@ -89,5 +101,11 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   }, [bodyFont, headlineFont]);
 
 
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+  return (
+    <NextThemesProvider {...props}>
+        <ThemeContext.Provider value={{ sidebarPosition, setSidebarPosition }}>
+            {children}
+        </ThemeContext.Provider>
+    </NextThemesProvider>
+  )
 }
