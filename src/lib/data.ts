@@ -36,6 +36,15 @@ export interface DashboardStats {
   lastSentDate: string | null;
 }
 
+export interface AdminDoc {
+    uid: string;
+    email: string;
+    fullName: string;
+    canSeeSettings: boolean;
+    photoURL?: string;
+    status?: string;
+}
+
 
 export async function getContacts(): Promise<Contact[]> {
   try {

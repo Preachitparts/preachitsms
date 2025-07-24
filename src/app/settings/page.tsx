@@ -8,23 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, Copy } from 'lucide-react';
-import { saveApiKeys, inviteAdmin } from '@/app/actions';
+import { saveApiKeys } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeCustomizer } from '@/components/theme-customizer';
-import { doc, getDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-
-interface AdminDoc {
-    uid: string;
-    email: string;
-    fullName: string;
-    canSeeSettings: boolean;
-    photoURL?: string;
-    status?: string;
-}
+import { AdminDoc } from '@/lib/data';
 
 async function getApiKeys() {
     const docRef = doc(db, 'settings', 'apiCredentials');
@@ -81,10 +70,8 @@ export default function SettingsPage() {
   const [showClientId, setShowClientId] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState(false);
   const [isApiPending, startApiTransition] = useTransition();
-  const [isInvitePending, startInviteTransition] = useTransition();
   const { toast } = useToast();
   const [initialKeys, setInitialKeys] = useState({ clientId: '', clientSecret: '' });
-  const [admins, setAdmins] = useState<AdminDoc[]>([]);
   
   useEffect(() => {
     async function fetchInitialData() {
@@ -94,16 +81,6 @@ export default function SettingsPage() {
         }
     }
     fetchInitialData();
-
-    const unsub = onSnapshot(collection(db, 'admins'), (snapshot) => {
-        const adminsData = snapshot.docs.map(doc => ({ 
-            uid: doc.id, 
-            ...doc.data() 
-        } as AdminDoc));
-        setAdmins(adminsData);
-    });
-
-    return () => unsub();
   }, []);
 
   const handleApiSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -127,29 +104,6 @@ export default function SettingsPage() {
           title: 'Failed to save keys',
           description: result.error || 'An unknown error occurred.',
         });
-      }
-    });
-  };
-
-  const handleInviteSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const form = event.currentTarget;
-
-    startInviteTransition(async () => {
-      const { error } = await inviteAdmin(formData);
-      if (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Invite Failed',
-          description: error,
-        });
-      } else {
-        toast({
-          title: 'Success!',
-          description: 'Admin invitation sent. They can now sign up.',
-        });
-        form.reset();
       }
     });
   };
@@ -231,7 +185,9 @@ export default function SettingsPage() {
                     <CredentialDisplay label="API URL" value="https://sms.hubtel.com/v1/messages/send" />
                 </CardContent>
             </Card>
-             <Card>
+        </div>
+        <div className="space-y-6">
+            <Card>
                 <CardHeader>
                     <CardTitle className="font-headline">Appearance</CardTitle>
                     <CardDescription>Customize the look and feel of the application.</CardDescription>
@@ -240,22 +196,10 @@ export default function SettingsPage() {
                     <ThemeCustomizer />
                 </CardContent>
             </Card>
-        </div>
-        <div className="space-y-6">
-            <Card>
+             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline">Admin Management</CardTitle>
                     <CardDescription>Invite and manage administrator accounts.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-sm text-muted-foreground">
-                        Admin management is disabled because authentication has been removed.
-                    </div>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Current Admins</CardTitle>
                 </CardHeader>
                 <CardContent>
                    <div className="text-sm text-muted-foreground">

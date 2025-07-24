@@ -37,6 +37,11 @@
     --sidebar-accent-foreground: 240 10% 3.9%;
     --sidebar-border: 0 0% 89.8%;
     --sidebar-ring: 283 44% 50%;
+    
+    /* Custom Theme Properties */
+    --font-size-base: 16px;
+    --font-family-body: 'Inter', sans-serif;
+    --font-family-headline: 'Space Grotesk', sans-serif;
   }
   .dark {
     --background: 240 6% 10%;
@@ -78,7 +83,11 @@
   * {
     @apply border-border;
   }
+  html {
+    font-size: var(--font-size-base);
+  }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-family-body);
   }
 }
