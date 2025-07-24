@@ -5,9 +5,8 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { ContactSelector } from '@/components/contact-selector';
 import { MessageComposer } from '@/components/message-composer';
-import type { Contact, Group, DashboardStats } from '@/lib/data';
-import { getDashboardStats } from '@/lib/data';
-import { collection, onSnapshot } from 'firebase/firestore';
+import type { Contact, Group, DashboardStats, SmsRecord } from '@/lib/data';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Folder, MessageSquareText, Calendar, Loader2 } from 'lucide-react';
@@ -40,11 +39,12 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats }
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [stats, setStats] = useState<DashboardStats | null>(initialStats);
-  const [isLoading, setIsLoading] = useState(false); // No longer loading initially
+  const [isLoading, setIsLoading] = useState(false); 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    setIsLoading(true);
     // Live updates from Firestore
     const unsubContacts = onSnapshot(collection(db, 'contacts'), (snapshot) => {
       const contactsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
@@ -60,13 +60,19 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats }
       setGroups(groupsData);
     });
     
-    const unsubHistory = onSnapshot(collection(db, 'smsHistory'), async () => {
-        // Refetch stats when history changes to keep them live
-        setIsLoading(true);
-        const dashboardStats = await getDashboardStats();
-        setStats(dashboardStats);
-        setIsLoading(false);
+    const historyQuery = query(collection(db, 'smsHistory'), orderBy('createdAt', 'desc'));
+    const unsubHistory = onSnapshot(historyQuery, (snapshot) => {
+        const historyData = snapshot.docs.map(doc => doc.data() as SmsRecord);
+        const newSmsCount = historyData.length;
+        const newLastSentDate = historyData.length > 0 ? historyData[0].date : 'N/A';
+
+        setStats({
+            smsCount: newSmsCount,
+            lastSentDate: newLastSentDate
+        });
     });
+    
+    setIsLoading(false);
 
     return () => {
       unsubContacts();
@@ -80,7 +86,7 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats }
      <MainLayout>
       <div className="flex flex-col gap-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Total Sent" value={stats?.smsCount || 0} icon={MessageSquareText} isLoading={isLoading} />
+            <StatCard title="Total Sent" value={stats?.smsCount ?? 0} icon={MessageSquareText} isLoading={isLoading} />
             <StatCard title="Total Members" value={contacts.length} icon={Users} isLoading={false} />
             <StatCard title="Total Groups" value={groups.length} icon={Folder} isLoading={false} />
             <StatCard title="Last Sent" value={stats?.lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
