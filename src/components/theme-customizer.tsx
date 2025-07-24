@@ -2,13 +2,14 @@
 'use client';
 
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { Label } from './ui/label';
-import { Paintbrush, Type, TextCursor, Palette, PanelLeft, PanelRight } from 'lucide-react';
+import { Paintbrush, Type, TextCursor, Palette, PanelLeft, PanelRight, Smartphone, ArrowDownToLine, ArrowUpToLine, ArrowLeftToLine, ArrowRightToLine } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { ThemeContext } from './theme-provider';
 
 const PRIMARY_COLORS = [
   { name: 'Default', value: '283 44% 50%' },
@@ -51,22 +52,26 @@ function dispatchThemeChange() {
 
 export function ThemeCustomizer() {
   const { theme } = useTheme();
+  const themeContext = useContext(ThemeContext);
   const [mounted, setMounted] = useState(false);
   const [fontSize, setFontSize] = useState(16);
-  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>('left');
-
-
+  
   useEffect(() => {
     setMounted(true);
     const savedFontSize = localStorage.getItem('theme-font-size');
     if (savedFontSize) {
         setFontSize(parseInt(savedFontSize, 10));
     }
-    const savedSidebarPos = localStorage.getItem('theme-sidebar-position') as 'left' | 'right';
-    if(savedSidebarPos) {
-        setSidebarPosition(savedSidebarPos);
-    }
   }, []);
+
+  if (!themeContext) return null;
+
+  const { 
+    sidebarPosition, 
+    setSidebarPosition, 
+    mobileSidebarPosition, 
+    setMobileSidebarPosition 
+  } = themeContext;
 
   const handleColorChange = (property: string, colorValue: string, isDarkComp: boolean) => {
     document.documentElement.style.setProperty(property, colorValue);
@@ -98,6 +103,12 @@ export function ThemeCustomizer() {
       localStorage.setItem('theme-sidebar-position', position);
       dispatchThemeChange();
   }
+
+  const handleMobileSidebarPositionChange = (position: 'top' | 'bottom' | 'left' | 'right') => {
+      setMobileSidebarPosition(position);
+      localStorage.setItem('theme-mobile-sidebar-position', position);
+      dispatchThemeChange();
+  }
   
   if (!mounted) {
     return null;
@@ -111,7 +122,7 @@ export function ThemeCustomizer() {
                 <h3 className="font-medium">Appearance</h3>
             </div>
              <div className="space-y-2">
-                <Label>Sidebar Position</Label>
+                <Label>Desktop Sidebar</Label>
                 <div className="flex gap-2">
                     <Button 
                         variant="outline" 
@@ -128,6 +139,43 @@ export function ThemeCustomizer() {
                         className={cn(sidebarPosition === 'right' && 'ring-2 ring-ring')}
                     >
                         <PanelRight className="mr-2" /> Right
+                    </Button>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label>Mobile Sidebar</Label>
+                <div className="flex flex-wrap gap-2">
+                    <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleMobileSidebarPositionChange('left')}
+                        className={cn(mobileSidebarPosition === 'left' && 'ring-2 ring-ring')}
+                    >
+                        <ArrowLeftToLine /><span className="sr-only">Left</span>
+                    </Button>
+                     <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleMobileSidebarPositionChange('right')}
+                        className={cn(mobileSidebarPosition === 'right' && 'ring-2 ring-ring')}
+                    >
+                        <ArrowRightToLine /><span className="sr-only">Right</span>
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleMobileSidebarPositionChange('top')}
+                        className={cn(mobileSidebarPosition === 'top' && 'ring-2 ring-ring')}
+                    >
+                        <ArrowUpToLine /><span className="sr-only">Top</span>
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleMobileSidebarPositionChange('bottom')}
+                        className={cn(mobileSidebarPosition === 'bottom' && 'ring-2 ring-ring')}
+                    >
+                        <ArrowDownToLine /><span className="sr-only">Bottom</span>
                     </Button>
                 </div>
             </div>
@@ -197,7 +245,7 @@ export function ThemeCustomizer() {
             <div className="space-y-2">
                 <Label>Body Font</Label>
                  <Select
-                    defaultValue={localStorage.getItem('theme-font-body') || 'inter'}
+                    defaultValue={typeof window !== 'undefined' ? localStorage.getItem('theme-font-body') || 'inter' : 'inter'}
                     onValueChange={(value) => handleFontChange('body', value)}
                 >
                     <SelectTrigger>
@@ -215,7 +263,7 @@ export function ThemeCustomizer() {
             <div className="space-y-2">
                 <Label>Headline Font</Label>
                 <Select
-                    defaultValue={localStorage.getItem('theme-font-headline') || 'space_grotesk'}
+                    defaultValue={typeof window !== 'undefined' ? localStorage.getItem('theme-font-headline') || 'space_grotesk' : 'space_grotesk'}
                     onValueChange={(value) => handleFontChange('headline', value)}
                 >
                     <SelectTrigger>

@@ -35,7 +35,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     return null; 
   }
 
-  const { sidebarPosition } = themeContext;
+  const { sidebarPosition, mobileSidebarPosition } = themeContext;
 
   const getPageTitle = () => {
     switch (pathname) {
@@ -139,7 +139,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                                 <span className="sr-only">Toggle navigation menu</span>
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="flex flex-col p-0">
+                        <SheetContent side={mobileSidebarPosition} className="flex flex-col p-0">
                             <SheetHeader className="p-4">
                                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                             </SheetHeader>

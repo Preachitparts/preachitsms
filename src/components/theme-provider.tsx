@@ -27,9 +27,13 @@ type CustomThemeProviderProps = ThemeProviderProps & {
     children: React.ReactNode;
 };
 
+type MobileSidebarPosition = 'left' | 'right' | 'top' | 'bottom';
+
 export const ThemeContext = React.createContext<{
     sidebarPosition: 'left' | 'right';
     setSidebarPosition: (pos: 'left' | 'right') => void;
+    mobileSidebarPosition: MobileSidebarPosition;
+    setMobileSidebarPosition: (pos: MobileSidebarPosition) => void;
 } | null>(null);
 
 
@@ -37,6 +41,8 @@ export function ThemeProvider({ children, ...props }: CustomThemeProviderProps) 
   const [bodyFont, setBodyFont] = React.useState('inter');
   const [headlineFont, setHeadlineFont] = React.useState('space_grotesk');
   const [sidebarPosition, setSidebarPosition] = React.useState<'left' | 'right'>('left');
+  const [mobileSidebarPosition, setMobileSidebarPosition] = React.useState<MobileSidebarPosition>('left');
+
 
   React.useEffect(() => {
     const handleThemeChange = () => {
@@ -45,10 +51,12 @@ export function ThemeProvider({ children, ...props }: CustomThemeProviderProps) 
         const storedFontSize = localStorage.getItem('theme-font-size') || '16';
         const storedFgColor = localStorage.getItem('theme-color-foreground');
         const storedSidebarPos = localStorage.getItem('theme-sidebar-position') as 'left' | 'right' || 'left';
+        const storedMobileSidebarPos = localStorage.getItem('theme-mobile-sidebar-position') as MobileSidebarPosition || 'left';
 
         setBodyFont(storedBodyFont);
         setHeadlineFont(storedHeadlineFont);
         setSidebarPosition(storedSidebarPos);
+        setMobileSidebarPosition(storedMobileSidebarPos);
         
         document.documentElement.style.setProperty('--font-size-base', `${storedFontSize}px`);
         
@@ -103,7 +111,7 @@ export function ThemeProvider({ children, ...props }: CustomThemeProviderProps) 
 
   return (
     <NextThemesProvider {...props}>
-        <ThemeContext.Provider value={{ sidebarPosition, setSidebarPosition }}>
+        <ThemeContext.Provider value={{ sidebarPosition, setSidebarPosition, mobileSidebarPosition, setMobileSidebarPosition }}>
             {children}
         </ThemeContext.Provider>
     </NextThemesProvider>
