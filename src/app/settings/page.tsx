@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Copy } from 'lucide-react';
 import { saveApiKeys, inviteAdmin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeCustomizer } from '@/components/theme-customizer';
@@ -34,6 +34,48 @@ async function getApiKeys() {
     }
     return null;
 }
+
+function CredentialDisplay({ label, value, isSecret = false }: { label: string, value: string, isSecret?: boolean }) {
+  const [show, setShow] = useState(!isSecret);
+  const { toast } = useToast();
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    toast({ title: 'Copied!', description: `${label} has been copied to your clipboard.` });
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="relative">
+        <Input readOnly value={show ? value : '●'.repeat(16)} />
+        <div className="absolute inset-y-0 right-0 flex items-center px-2">
+            {isSecret && (
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setShow(!show)}
+                  >
+                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+            )}
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleCopy}
+            >
+                <Copy className="h-4 w-4" />
+            </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function SettingsPage() {
   const [showClientId, setShowClientId] = useState(false);
@@ -75,6 +117,10 @@ export default function SettingsPage() {
           title: 'Success!',
           description: 'Your API keys have been saved.',
         });
+         const keys = await getApiKeys();
+        if (keys) {
+            setInitialKeys({ clientId: keys.clientId, clientSecret: keys.clientSecret });
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -173,6 +219,17 @@ export default function SettingsPage() {
                   </Button>
                 </form>
               </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Hubtel Configuration</CardTitle>
+                    <CardDescription>Your current Hubtel API details.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <CredentialDisplay label="Client ID" value={initialKeys.clientId} />
+                    <CredentialDisplay label="Client Secret" value={initialKeys.clientSecret} isSecret />
+                    <CredentialDisplay label="API URL" value="https://sms.hubtel.com/v1/messages/send" />
+                </CardContent>
             </Card>
              <Card>
                 <CardHeader>
