@@ -38,11 +38,11 @@ export async function sendSms(formData: FormData) {
 
   const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
-  // Pre-fetch group names here, outside the try/catch for logging
   const groupMapForLogging = new Map<string, string>();
   if (selectedGroups.length > 0) {
       try {
-        const groupsSnapshot = await getDocs(query(collection(db, 'groups'), where('__name__', 'in', selectedGroups)));
+        const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', selectedGroups));
+        const groupsSnapshot = await getDocs(groupsQuery);
         groupsSnapshot.docs.forEach(d => groupMapForLogging.set(d.id, d.data().name));
       } catch (e) {
          console.error("Could not fetch group names for logging", e);
@@ -102,7 +102,9 @@ export async function sendSms(formData: FormData) {
         content: message,
     });
 
-    const hubtelResponse = await fetch(`${baseUrl}?${params.toString()}`, {
+    const fullUrl = `${baseUrl}?${params.toString()}`;
+
+    const hubtelResponse = await fetch(fullUrl, {
       method: 'GET',
     });
 
@@ -115,9 +117,9 @@ export async function sendSms(formData: FormData) {
         throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
     
-    if (hubtelResult.Status !== 0 && hubtelResult.status !== 0) {
+    if (hubtelResult.status !== 0 && hubtelResult.Status !== 0) {
          console.error("Hubtel API Error:", hubtelResult);
-         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.Status || hubtelResult.status}`;
+         const errorMessage = hubtelResult.Message || hubtelResult.message || `Hubtel API request failed with status ${hubtelResult.status !== undefined ? hubtelResult.status : hubtelResult.Status}`;
          throw new Error(errorMessage);
     }
       
