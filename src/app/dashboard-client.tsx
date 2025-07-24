@@ -40,7 +40,8 @@ interface DashboardClientProps {
 export function DashboardClient({ initialContacts, initialGroups, initialStats, isBulk = false }: DashboardClientProps) {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
-  const [stats, setStats] = useState<DashboardStats>(initialStats);
+  const [smsCount, setSmsCount] = useState(initialStats.smsCount);
+  const [lastSentDate, setLastSentDate] = useState(initialStats.lastSentDate);
   const [isLoading, setIsLoading] = useState(!initialStats); 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
@@ -69,11 +70,8 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
         const newSmsCount = historyData.length;
         const newLastSentDate = historyData.length > 0 ? historyData[0].date : 'N/A';
         
-        setStats(prevStats => ({
-            ...prevStats,
-            smsCount: newSmsCount,
-            lastSentDate: newLastSentDate,
-        }));
+        setSmsCount(newSmsCount);
+        setLastSentDate(newLastSentDate);
     });
     
     setIsLoading(false);
@@ -90,11 +88,11 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
      <MainLayout>
       <div className="flex flex-col gap-6">
         {!isBulk && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard title="Total Sent" value={stats?.smsCount ?? 0} icon={MessageSquareText} isLoading={isLoading} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Total Sent" value={smsCount} icon={MessageSquareText} isLoading={isLoading} />
               <StatCard title="Total Members" value={contacts.length} icon={Users} isLoading={isLoading} />
               <StatCard title="Total Groups" value={groups.length} icon={Folder} isLoading={isLoading} />
-              <StatCard title="Last Sent" value={stats?.lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
+              <StatCard title="Last Sent" value={lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
           </div>
         )}
         <div className="grid h-full gap-6 lg:grid-cols-5">
