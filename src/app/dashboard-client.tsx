@@ -45,7 +45,10 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
   const [isLoading, setIsLoading] = useState(!initialStats); 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
-  const [manualNumbers, setManualNumbers] = useState<Set<string>>(new Set());
+  const [manualNumber, setManualNumber] = useState<string>('');
+  
+  // For single-recipient mode on dashboard
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -83,6 +86,7 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
     };
   }, []);
   
+  const recipient = isBulk ? undefined : manualNumber || selectedContact?.phone;
 
   return (
      <MainLayout>
@@ -100,21 +104,24 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
             <ContactSelector 
               contacts={contacts} 
               groups={groups}
+              isBulk={isBulk}
               selectedContacts={selectedContacts}
               setSelectedContacts={setSelectedContacts}
               selectedGroups={selectedGroups}
               setSelectedGroups={setSelectedGroups}
-              manualNumbers={manualNumbers}
-              setManualNumbers={setManualNumbers}
-              allowManualEntry={!isBulk}
+              manualNumber={manualNumber}
+              setManualNumber={setManualNumber}
+              selectedContact={selectedContact}
+              setSelectedContact={setSelectedContact}
             />
           </div>
           <div className="lg:col-span-3">
             <MessageComposer 
+              recipient={recipient}
               selectedContacts={Array.from(selectedContacts)}
               selectedGroups={Array.from(selectedGroups)}
-              manualNumbers={Array.from(manualNumbers)}
               sendAction={isBulk ? sendBulkSms : sendDashboardSms}
+              isBulk={isBulk}
             />
           </div>
         </div>

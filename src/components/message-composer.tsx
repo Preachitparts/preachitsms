@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useRef, useTransition } from 'react';
+import React, { useState, useRef, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -10,24 +10,30 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
-const MAX_CHARS = 160;
-
 type SendSmsAction = (formData: FormData) => Promise<{success: boolean, error?: string}>;
 
 interface MessageComposerProps {
-    selectedContacts: string[];
-    selectedGroups: string[];
-    manualNumbers: string[];
+    recipient?: string; // For single SMS
+    selectedContacts?: string[]; // For bulk SMS
+    selectedGroups?: string[]; // For bulk SMS
     sendAction: SendSmsAction;
+    isBulk: boolean;
 }
 
-export function MessageComposer({ selectedContacts, selectedGroups, manualNumbers, sendAction }: MessageComposerProps) {
+export function MessageComposer({ recipient, selectedContacts, selectedGroups, sendAction, isBulk }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [senderId, setSenderId] = useState('Preach It');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isSending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Clear message when recipient changes for single send mode
+  useEffect(() => {
+    if (!isBulk) {
+      setMessage('');
+    }
+  }, [recipient, isBulk]);
 
   const handleAiRefine = () => {
     if (!message) {
@@ -47,9 +53,12 @@ export function MessageComposer({ selectedContacts, selectedGroups, manualNumber
   };
 
   const handleSend = async (formData: FormData) => {
-    selectedContacts.forEach(id => formData.append('selectedContacts', id));
-    selectedGroups.forEach(id => formData.append('selectedGroups', id));
-    manualNumbers.forEach(num => formData.append('manualNumbers', num));
+    if (isBulk) {
+        selectedContacts?.forEach(id => formData.append('selectedContacts', id));
+        selectedGroups?.forEach(id => formData.append('selectedGroups', id));
+    } else if (recipient) {
+        formData.append('recipient', recipient);
+    }
 
     startTransition(async () => {
       const result = await sendAction(formData);
@@ -59,9 +68,10 @@ export function MessageComposer({ selectedContacts, selectedGroups, manualNumber
           description: 'Your message has been sent.',
         });
         setMessage('');
-        // Don't reset senderId to keep the default value
         if (formRef.current) {
-          formRef.current.reset();
+          const currentForm = formRef.current;
+          currentForm.reset();
+          // Manually reset controlled senderId state as form.reset() doesn't affect it
           setSenderId('Preach It');
         }
       } else {
@@ -73,6 +83,14 @@ export function MessageComposer({ selectedContacts, selectedGroups, manualNumber
       }
     });
   };
+
+  const canSend = () => {
+      if (isSending || !message || !senderId) return false;
+      if (isBulk) {
+          return (selectedContacts?.length ?? 0) > 0 || (selectedGroups?.length ?? 0) > 0;
+      }
+      return !!recipient;
+  }
 
   return (
     <Card className="flex h-full flex-col">
@@ -103,11 +121,11 @@ export function MessageComposer({ selectedContacts, selectedGroups, manualNumber
               className="min-h-[250px] resize-none"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              maxLength={MAX_CHARS}
+              maxLength={160}
               required
             />
             <div className="absolute bottom-3 right-3 text-sm text-muted-foreground">
-              {message.length}/{MAX_CHARS}
+              {message.length}/160
             </div>
           </div>
         </CardContent>
@@ -120,7 +138,7 @@ export function MessageComposer({ selectedContacts, selectedGroups, manualNumber
             )}
             Refine with AI
           </Button>
-          <Button type="submit" disabled={isSending || !message || !senderId}>
+          <Button type="submit" disabled={!canSend()}>
             {isSending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
