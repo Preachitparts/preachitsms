@@ -87,14 +87,16 @@ export async function sendBulkSms(formData: FormData) {
                 }
                 
                 for (const chunk of memberIdChunks) {
-                    const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', chunk));
-                    const membersSnapshot = await getDocs(membersQuery);
-                    membersSnapshot.forEach(doc => {
-                        const member = doc.data();
-                        if (member?.phone) {
-                            allRecipientNumbers.add(member.phone);
-                        }
-                    });
+                    if (chunk.length > 0) {
+                        const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', chunk));
+                        const membersSnapshot = await getDocs(membersQuery);
+                        membersSnapshot.forEach(doc => {
+                            const member = doc.data();
+                            if (member?.phone) {
+                                allRecipientNumbers.add(member.phone);
+                            }
+                        });
+                    }
                 }
             }
         }
@@ -110,6 +112,7 @@ export async function sendBulkSms(formData: FormData) {
             To: recipientsArray,
             Content: message,
         };
+
         const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
             method: 'POST',
             headers: {
@@ -130,7 +133,7 @@ export async function sendBulkSms(formData: FormData) {
         
         if (hubtelResponse.status !== 200 && hubtelResponse.status !== 201) {
             console.error("Hubtel API Error:", hubtelResult);
-            const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed. Full API Response: ${JSON.stringify(hubtelResult)}`;
+            const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed with status ${hubtelResponse.status}.`;
             throw new Error(errorMessage);
         }
 
@@ -174,5 +177,3 @@ export async function sendBulkSms(formData: FormData) {
         return { success: false, error: errorMessage };
     }
 }
-
-    
