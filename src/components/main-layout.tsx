@@ -125,7 +125,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   )
 
   const MainContent = (
-     <div className="flex flex-col w-full">
+     <div className="flex flex-1 flex-col min-w-0">
             <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6 sticky top-0 z-30">
                  {isMobile && (
                      <Sheet>
