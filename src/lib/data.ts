@@ -50,9 +50,13 @@ export interface AdminDoc {
 
 export async function getContacts(options?: { withEmail?: boolean }): Promise<Contact[]> {
   try {
-    let q = query(collection(db, 'contacts'), orderBy('name'));
+    let q;
     if (options?.withEmail) {
-        q = query(q, where('email', '!=', ''));
+        // This query structure avoids needing a composite index.
+        // Order by the field used in the inequality, then order by the desired field.
+        q = query(collection(db, 'contacts'), orderBy('email'), where('email', '!=', ''), orderBy('name'));
+    } else {
+        q = query(collection(db, 'contacts'), orderBy('name'));
     }
     const contactsSnapshot = await getDocs(q);
     const contactsList = contactsSnapshot.docs.map(doc => ({
