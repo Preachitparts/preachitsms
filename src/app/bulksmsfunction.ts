@@ -3,14 +3,13 @@
 
 import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, getDocs, query, where, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const bulkSmsSchema = z.object({
   senderId: z.string().min(1, 'Sender ID cannot be empty.').max(11, 'Sender ID cannot be more than 11 characters.'),
   message: z.string().min(1, 'Message cannot be empty.').max(160, 'Message cannot be more than 160 characters.'),
-  selectedContacts: z.array(z.string()),
-  selectedGroups: z.array(z.string()),
+  recipients: z.array(z.string().regex(/^233\d{9}$/)),
 });
 
 async function getApiKeys() {
@@ -26,92 +25,29 @@ export async function sendBulkSms(formData: FormData) {
      const smsData = {
       senderId: formData.get('senderId') as string,
       message: formData.get('message') as string,
-      selectedContacts: formData.getAll('selectedContacts').map(String),
-      selectedGroups: formData.getAll('selectedGroups').map(String),
+      recipients: formData.getAll('recipients').map(String),
     };
     
     const parsed = bulkSmsSchema.safeParse(smsData);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.errors.map(e => e.message).join(', ') };
+      const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return { success: false, error: `Invalid data provided. ${errorMessages}` };
     }
-    const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
+    const { message, senderId, recipients } = parsed.data;
 
-    let recipientGroupNames: string[] = [];
-    const validGroups = selectedGroups.filter(Boolean);
-    if (validGroups.length > 0) {
-      try {
-        const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', validGroups));
-        const groupsSnapshot = await getDocs(groupsQuery);
-        recipientGroupNames = groupsSnapshot.docs.map(d => d.data().name);
-      } catch (e) {
-         console.error("Could not fetch group names for logging", e);
-      }
-    }
-    
     try {
         const apiKeys = await getApiKeys();
         if (!apiKeys || !apiKeys.clientId || !apiKeys.clientSecret) {
             return { success: false, error: "API credentials are not configured. Please set them in the Settings page." };
         }
 
-        const allRecipientNumbers = new Set<string>();
-        const validContacts = selectedContacts.filter(Boolean);
-
-        if (validContacts.length > 0) {
-            const contactsQuery = query(collection(db, 'contacts'), where('__name__', 'in', validContacts));
-            const contactsSnapshot = await getDocs(contactsQuery);
-            contactsSnapshot.forEach(doc => {
-                const contact = doc.data();
-                if (contact?.phone) {
-                    allRecipientNumbers.add(contact.phone);
-                }
-            });
-        }
-
-        if (validGroups.length > 0) {
-            const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', validGroups));
-            const groupsSnapshot = await getDocs(groupsQuery);
-            const memberIds = new Set<string>();
-            groupsSnapshot.forEach(doc => {
-                const group = doc.data();
-                if (group?.members) {
-                    group.members.forEach((memberId: string) => memberIds.add(memberId));
-                }
-            });
-
-            if (memberIds.size > 0) {
-                const uniqueMemberIds = Array.from(memberIds);
-                // Firestore 'in' queries are limited to 30 items.
-                // We chunk the memberIds to handle more than 30.
-                const memberIdChunks: string[][] = [];
-                for (let i = 0; i < uniqueMemberIds.length; i += 30) {
-                    memberIdChunks.push(uniqueMemberIds.slice(i, i + 30));
-                }
-                
-                for (const chunk of memberIdChunks) {
-                    if (chunk.length > 0) {
-                        const membersQuery = query(collection(db, 'contacts'), where('__name__', 'in', chunk));
-                        const membersSnapshot = await getDocs(membersQuery);
-                        membersSnapshot.forEach(doc => {
-                            const member = doc.data();
-                            if (member?.phone) {
-                                allRecipientNumbers.add(member.phone);
-                            }
-                        });
-                    }
-                }
-            }
-        }
-
-
-        if (allRecipientNumbers.size === 0) {
-            return { success: false, error: "No recipients selected or recipients have no phone numbers." };
+        if (recipients.length === 0) {
+            return { success: false, error: "No recipients selected." };
         }
         
-        const recipientsArray = Array.from(allRecipientNumbers);
         const payload = {
             From: senderId,
-            To: recipientsArray,
+            To: recipients,
             Content: message,
         };
 
@@ -147,8 +83,8 @@ export async function sendBulkSms(formData: FormData) {
         
         await addDoc(collection(db, 'smsHistory'), {
           senderId,
-          recipientCount: allRecipientNumbers.size,
-          recipientGroups: recipientGroupNames,
+          recipientCount: recipients.length,
+          recipientGroups: [], // Simplified: we don't know the groups from phone numbers alone
           message,
           status: 'Sent',
           date: new Date().toISOString().split('T')[0],
@@ -165,8 +101,8 @@ export async function sendBulkSms(formData: FormData) {
 
         await addDoc(collection(db, 'smsHistory'), {
           senderId: smsData.senderId,
-          recipientCount: 0, 
-          recipientGroups: recipientGroupNames,
+          recipientCount: smsData.recipients.length,
+          recipientGroups: [],
           message: smsData.message,
           status: 'Failed',
           date: new Date().toISOString().split('T')[0],
@@ -175,7 +111,6 @@ export async function sendBulkSms(formData: FormData) {
         });
 
         revalidatePath('/history');
-
         return { success: false, error: errorMessage };
     }
 }

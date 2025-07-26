@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,11 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
     });
   };
 
+  const filteredContacts = contacts.filter(contact => 
+    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contact.phone.includes(searchTerm)
+  );
+
   const handleSelectAll = () => {
     if (selectedPhones.size === filteredContacts.length) {
       setSelectedPhones(new Set());
@@ -37,11 +43,6 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
       setSelectedPhones(new Set(filteredContacts.map(c => c.phone)));
     }
   }
-
-  const filteredContacts = contacts.filter(contact => 
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.phone.includes(searchTerm)
-  );
   
   const handleSubmit = async (formData: FormData) => {
     if (selectedPhones.size === 0) {
@@ -53,10 +54,7 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
       return;
     }
     
-    const contactMap = new Map(contacts.map(c => [c.phone, c.id]));
-    const selectedContactIds = Array.from(selectedPhones).map(phone => contactMap.get(phone)).filter(Boolean) as string[];
-
-    selectedContactIds.forEach(id => formData.append('selectedContacts', id));
+    Array.from(selectedPhones).forEach(phone => formData.append('recipients', phone));
     
     startTransition(async () => {
       const result = await sendBulkSms(formData);
