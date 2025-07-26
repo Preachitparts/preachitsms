@@ -9,18 +9,18 @@ import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Terminal } from 'lucide-react';
 
 type SendSmsAction = (formData: FormData) => Promise<{success: boolean, error?: string}>;
 
 interface MessageComposerProps {
     recipient?: string; // For single SMS
-    selectedContacts?: string[]; // For bulk SMS
-    selectedGroups?: string[]; // For bulk SMS
     sendAction: SendSmsAction;
     isBulk: boolean;
 }
 
-export function MessageComposer({ recipient, selectedContacts, selectedGroups, sendAction, isBulk }: MessageComposerProps) {
+export function MessageComposer({ recipient, sendAction, isBulk }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [senderId, setSenderId] = useState('Preach It');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -53,10 +53,7 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
   };
 
   const handleSend = async (formData: FormData) => {
-    if (isBulk) {
-        selectedContacts?.forEach(id => formData.append('selectedContacts', id));
-        selectedGroups?.forEach(id => formData.append('selectedGroups', id));
-    } else if (recipient) {
+    if (recipient) {
         formData.append('recipient', recipient);
     }
 
@@ -68,12 +65,11 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
           description: 'Your message has been sent.',
         });
         setMessage('');
-        if (formRef.current) {
-          const currentForm = formRef.current;
-          currentForm.reset();
-          // Manually reset controlled senderId state as form.reset() doesn't affect it
-          setSenderId('Preach It');
-        }
+        // We don't reset the senderId because the user might want to reuse it.
+        // if (formRef.current) {
+        //   formRef.current.reset();
+        //   setSenderId('Preach It');
+        // }
       } else {
         toast({
           variant: 'destructive',
@@ -86,9 +82,6 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
 
   const canSend = () => {
       if (isSending || !message || !senderId) return false;
-      if (isBulk) {
-          return (selectedContacts?.length ?? 0) > 0 || (selectedGroups?.length ?? 0) > 0;
-      }
       return !!recipient;
   }
 
@@ -96,10 +89,19 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
     <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle className="font-headline">Compose Message</CardTitle>
-        <CardDescription>Craft your SMS and send it to your selected contacts.</CardDescription>
+        <CardDescription>Craft your SMS and send it to your selected recipient.</CardDescription>
       </CardHeader>
       <form ref={formRef} action={handleSend} className="flex flex-col flex-grow">
         <CardContent className="flex-grow space-y-4">
+          {!recipient && (
+             <Alert>
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>No Recipient Selected</AlertTitle>
+              <AlertDescription>
+                Please select a contact or use manual entry on the left to choose who to send the message to.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-2">
             <Label htmlFor="senderId">Sender ID</Label>
             <Input
@@ -110,6 +112,7 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
               required
               value={senderId}
               onChange={(e) => setSenderId(e.target.value)}
+              disabled={!recipient || isSending}
             />
           </div>
           <div className="relative">
@@ -123,6 +126,7 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
               onChange={(e) => setMessage(e.target.value)}
               maxLength={160}
               required
+              disabled={!recipient || isSending}
             />
             <div className="absolute bottom-3 right-3 text-sm text-muted-foreground">
               {message.length}/160
@@ -130,7 +134,7 @@ export function MessageComposer({ recipient, selectedContacts, selectedGroups, s
           </div>
         </CardContent>
         <CardFooter className="flex justify-between border-t pt-4">
-          <Button type="button" variant="outline" onClick={handleAiRefine} disabled={isAiLoading || isSending}>
+          <Button type="button" variant="outline" onClick={handleAiRefine} disabled={isAiLoading || isSending || !message}>
             {isAiLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

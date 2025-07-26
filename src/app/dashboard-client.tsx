@@ -11,7 +11,6 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Folder, MessageSquareText, Calendar, Loader2 } from 'lucide-react';
 import { sendDashboardSms } from './actions';
-import { sendBulkSms } from './bulksmsfunction';
 
 
 function StatCard({ title, value, icon: Icon, isLoading }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean }) {
@@ -36,20 +35,16 @@ interface DashboardClientProps {
   initialContacts: Contact[];
   initialGroups: Group[];
   initialStats: DashboardStats;
-  isBulk?: boolean;
 }
 
-export function DashboardClient({ initialContacts, initialGroups, initialStats, isBulk = false }: DashboardClientProps) {
+export function DashboardClient({ initialContacts, initialGroups, initialStats }: DashboardClientProps) {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [smsCount, setSmsCount] = useState(initialStats.smsCount);
   const [lastSentDate, setLastSentDate] = useState(initialStats.lastSentDate);
   const [isLoading, setIsLoading] = useState(!initialStats); 
-  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
-  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
-  const [manualNumber, setManualNumber] = useState<string>('');
   
-  // For single-recipient mode on dashboard
+  const [manualNumber, setManualNumber] = useState<string>('');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
@@ -88,42 +83,39 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
     };
   }, []);
   
-  const recipient = isBulk ? undefined : manualNumber || selectedContact?.phone;
+  const recipient = manualNumber || selectedContact?.phone;
 
   return (
      <MainLayout>
       <div className="flex flex-col gap-6">
-        {!isBulk && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard title="Total Sent" value={smsCount} icon={MessageSquareText} isLoading={isLoading} />
               <StatCard title="Total Members" value={contacts.length} icon={Users} isLoading={isLoading} />
               <StatCard title="Total Groups" value={groups.length} icon={Folder} isLoading={isLoading} />
               <StatCard title="Last Sent" value={lastSentDate || 'N/A'} icon={Calendar} isLoading={isLoading} />
           </div>
-        )}
         <div className="grid h-full gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <ContactSelector 
               contacts={contacts} 
-              groups={groups}
-              isBulk={isBulk}
-              selectedContacts={selectedContacts}
-              setSelectedContacts={setSelectedContacts}
-              selectedGroups={selectedGroups}
-              setSelectedGroups={setSelectedGroups}
+              isBulk={false}
               manualNumber={manualNumber}
               setManualNumber={setManualNumber}
               selectedContact={selectedContact}
               setSelectedContact={setSelectedContact}
+              // These props are not used in single mode, but required by the component
+              groups={[]}
+              selectedContacts={new Set()}
+              setSelectedContacts={() => {}}
+              selectedGroups={new Set()}
+              setSelectedGroups={() => {}}
             />
           </div>
           <div className="lg:col-span-3">
             <MessageComposer 
               recipient={recipient}
-              selectedContacts={Array.from(selectedContacts)}
-              selectedGroups={Array.from(selectedGroups)}
-              sendAction={isBulk ? sendBulkSms : sendDashboardSms}
-              isBulk={isBulk}
+              sendAction={sendDashboardSms}
+              isBulk={false}
             />
           </div>
         </div>
@@ -131,5 +123,3 @@ export function DashboardClient({ initialContacts, initialGroups, initialStats, 
     </MainLayout>
   );
 }
-
-    

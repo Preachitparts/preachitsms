@@ -12,8 +12,6 @@ import type { Contact, Group } from '@/lib/data';
 import { Search, User, Users, X, Keyboard, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from '@/hooks/use-toast';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 
 interface ContactSelectorProps {
@@ -49,7 +47,7 @@ export function ContactSelector({
   const [manualNumberInput, setManualNumberInput] = useState('');
   
   const filteredContacts = useMemo(() =>
-    contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm.toLowerCase())),
     [contacts, searchTerm]
   );
 
@@ -222,24 +220,32 @@ export function ContactSelector({
   const renderSingleSelector = () => (
      <Tabs defaultValue="individuals" className="flex-grow flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="individuals">Individuals</TabsTrigger>
+            <TabsTrigger value="individuals">From Contacts</TabsTrigger>
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
           </TabsList>
           <TabsContent value="individuals" className="flex-grow mt-4 overflow-hidden">
             <ScrollArea className="h-[300px] pr-4">
+              {filteredContacts.length === 0 && (
+                <div className="text-center text-muted-foreground pt-10">
+                  <p>No contacts found.</p>
+                </div>
+              )}
               {filteredContacts.map(contact => (
                 <div 
                     key={contact.id} 
                     onClick={() => handleSingleContactSelect(contact)}
                     className={cn(
-                        "flex items-center space-x-3 mb-2 p-2 rounded-md cursor-pointer hover:bg-accent",
+                        "flex items-center space-x-3 mb-2 p-2 rounded-md cursor-pointer hover:bg-accent/50",
                         selectedContact?.id === contact.id && "bg-accent"
                     )}
                 >
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <label className="flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                    {contact.name}
-                  </label>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                      {contact.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{contact.phone}</p>
+                  </div>
                   {selectedContact?.id === contact.id && <CheckCircle2 className="h-5 w-5 text-primary" />}
                 </div>
               ))}
@@ -248,7 +254,7 @@ export function ContactSelector({
           <TabsContent value="manual" className="flex-grow mt-4 overflow-hidden">
             <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                    Enter a single valid Ghanaian phone number.
+                    Enter a single valid Ghanaian phone number. It must start with `233`.
                 </p>
                 <div className="flex gap-2">
                     <Input
@@ -260,7 +266,7 @@ export function ContactSelector({
                     <Button onClick={handleManualNumberAdd}>Set</Button>
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Keyboard className="h-3 w-3" /> Press Enter to set the number.
+                    <Keyboard className="h-3 w-3" /> Press Enter or click Set to use the number.
                 </p>
             </div>
         </TabsContent>
@@ -279,7 +285,7 @@ export function ContactSelector({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name..."
+            placeholder="Search by name or phone..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -287,7 +293,7 @@ export function ContactSelector({
         </div>
         {isBulk ? renderBulkSelector() : renderSingleSelector()}
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 pt-4 border-t">
+      <CardFooter className="flex-col items-start gap-2 pt-4 border-t min-h-[70px]">
           <h3 className="text-sm font-medium">{totalRecipients} Recipient(s) Selected</h3>
           <div className="flex flex-wrap gap-2">
             {isBulk ? (
@@ -309,14 +315,16 @@ export function ContactSelector({
                 <>
                 {selectedContact && (
                     <Badge variant="outline" className="flex items-center gap-1">
+                        <User className="h-3 w-3 mr-1" />
                         {selectedContact.name}
                         <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setSelectedContact(null)}><X className="h-3 w-3"/></Button>
                     </Badge>
                 )}
                 {manualNumber && (
                     <Badge variant="secondary" className="flex items-center gap-1">
+                        <Keyboard className="h-3 w-3 mr-1" />
                         {manualNumber}
-                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setManualNumber('')}><X className="h-3 w-3"/></Button>
+                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => { setManualNumber(''); setManualNumberInput(''); }}><X className="h-3 w-3"/></Button>
                     </Badge>
                 )}
                 </>
