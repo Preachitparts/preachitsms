@@ -125,6 +125,7 @@ export async function deleteSmsHistory(ids: string[]) {
 const memberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   phone: z.string().regex(/^233\d{9}$/, 'Phone number must be a valid Ghanaian number (e.g., 233241234567).'),
+  email: z.string().email('Invalid email address.').optional().or(z.literal('')),
   location: z.string().min(2, 'Location must be at least 2 characters.'),
   groups: z.array(z.string()).optional(),
 });
@@ -135,6 +136,7 @@ export async function addMember(prevState: any, formData: FormData) {
     const parsed = memberSchema.safeParse({
       name: formData.get('name'),
       phone: formData.get('phone'),
+      email: formData.get('email'),
       location: formData.get('location'),
       groups: formData.getAll('groups'),
     });
@@ -143,12 +145,12 @@ export async function addMember(prevState: any, formData: FormData) {
       return { success: false, error: parsed.error.format() };
     }
     
-    const { name, phone, location, groups = [] } = parsed.data;
+    const { name, phone, email, location, groups = [] } = parsed.data;
 
     const batch = writeBatch(db);
 
     const newMemberRef = doc(collection(db, 'contacts'));
-    batch.set(newMemberRef, { name, phone, location, groups });
+    batch.set(newMemberRef, { name, phone, email: email || '', location, groups });
 
     for (const groupId of groups) {
       const groupRef = doc(db, 'groups', groupId);
@@ -160,6 +162,7 @@ export async function addMember(prevState: any, formData: FormData) {
 
     revalidatePath('/members');
     revalidatePath('/groups');
+    revalidatePath('/email');
     return { success: true };
 
   } catch (error) {
@@ -178,6 +181,7 @@ export async function updateMember(prevState: any, formData: FormData) {
             id: formData.get('id'),
             name: formData.get('name'),
             phone: formData.get('phone'),
+            email: formData.get('email'),
             location: formData.get('location'),
             groups: formData.getAll('groups'),
         });
@@ -186,7 +190,7 @@ export async function updateMember(prevState: any, formData: FormData) {
             return { success: false, error: parsed.error.format() };
         }
 
-        const { id, name, phone, location, groups = [] } = parsed.data;
+        const { id, name, phone, email, location, groups = [] } = parsed.data;
 
         const batch = writeBatch(db);
         const memberRef = doc(db, 'contacts', id);
@@ -197,7 +201,7 @@ export async function updateMember(prevState: any, formData: FormData) {
         const groupsToAdd = groups.filter(g => !currentGroups.includes(g));
         const groupsToRemove = currentGroups.filter((g: string) => !groups.includes(g));
 
-        batch.update(memberRef, { name, phone, location, groups });
+        batch.update(memberRef, { name, phone, email: email || '', location, groups });
 
         for (const groupId of groupsToAdd) {
           const groupRef = doc(db, 'groups', groupId);
@@ -214,6 +218,7 @@ export async function updateMember(prevState: any, formData: FormData) {
 
         revalidatePath('/members');
         revalidatePath('/groups');
+        revalidatePath('/email');
         return { success: true };
 
     } catch (error)
@@ -247,6 +252,7 @@ export async function deleteMember(formData: FormData) {
 
         revalidatePath('/members');
         revalidatePath('/groups');
+        revalidatePath('/email');
         return { success: true };
     } catch (error) {
         console.error("Error deleting member:", error);
@@ -385,7 +391,8 @@ export async function inviteAdmin(formData: FormData) {
             return { error: parsed.error.errors.map(e => e.message).join(', ') };
         }
 
-        const { inviteEmail, fullName, canSeeSettings } = parsed.data;
+        const { fullName, canSeeSettings } = parsed.data;
+        const inviteEmail = parsed.data.inviteEmail.toLowerCase();
 
         const q = query(collection(db, 'admins'), where('email', '==', inviteEmail));
         const existingAdmin = await getDocs(q);
@@ -414,13 +421,14 @@ export async function inviteAdmin(formData: FormData) {
 const csvMemberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   phone: z.string().min(1, 'Phone is required'),
+  email: z.string().optional(),
   location: z.string().min(1, 'Location is required'),
   group: z.string().optional(),
 });
 
 const importCsvSchema = z.array(csvMemberSchema);
 
-export async function importMembersFromCSV(contacts: { name: string, phone: string, location: string, group?: string }[]) {
+export async function importMembersFromCSV(contacts: { name: string, phone: string, email?: string, location: string, group?: string }[]) {
     try {
         const parsed = importCsvSchema.safeParse(contacts);
         if (!parsed.success) {
@@ -453,6 +461,7 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
             const contactData = {
                 name: contact.name,
                 phone: contact.phone,
+                email: contact.email || '',
                 location: contact.location,
                 groups: groupIds,
             };
@@ -472,6 +481,7 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
 
         revalidatePath('/members');
         revalidatePath('/groups');
+        revalidatePath('/email');
 
         return { success: true, count: parsed.data.length, created: createdCount, updated: updatedCount };
 
@@ -481,4 +491,69 @@ export async function importMembersFromCSV(contacts: { name: string, phone: stri
     }
 }
 
+
+const emailSchema = z.object({
+  subject: z.string().min(1, 'Subject cannot be empty.'),
+  body: z.string().min(1, 'Email body cannot be empty.'),
+  recipients: z.array(z.string().email()).min(1, 'At least one recipient is required.'),
+});
+
+export async function sendEmail(formData: FormData) {
+  const rawData = {
+    subject: formData.get('subject') as string,
+    body: formData.get('body') as string,
+    recipients: formData.getAll('recipients').map(String).filter(Boolean),
+  };
+
+  const parsed = emailSchema.safeParse(rawData);
+  if (!parsed.success) {
+    const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: `Invalid data provided. ${errorMessages}` };
+  }
+
+  const { subject, body, recipients } = parsed.data;
+
+  try {
+    //
+    // TODO: Add real email sending logic here
+    // This is where you would integrate with an email service like SendGrid, Mailgun, or Nodemailer.
+    // Example:
+    //
+    // const emailData = {
+    //   from: 'you@yourdomain.com',
+    //   to: recipients,
+    //   subject: subject,
+    //   text: body,
+    // };
+    //
+    // const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify(emailData),
+    // });
+    //
+    // if (!response.ok) {
+    //   throw new Error('Failed to send email');
+    // }
     
+    console.log('--- Sending Email (Simulated) ---');
+    console.log('Recipients:', recipients);
+    console.log('Subject:', subject);
+    console.log('Body:', body);
+    console.log('---------------------------------');
+
+
+    // This is a simulation. In a real app, you would await the response from the email service.
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('Email sending error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, error: errorMessage };
+  }
+}

@@ -34,6 +34,7 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Phone</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Groups</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -44,6 +45,7 @@ export function MembersTable({ members, allGroups }: { members: MemberWithGroupN
               <TableRow key={member.id}>
                 <TableCell className="font-medium whitespace-nowrap">{member.name}</TableCell>
                 <TableCell className="whitespace-nowrap">{member.phone}</TableCell>
+                <TableCell className="whitespace-nowrap">{member.email}</TableCell>
                 <TableCell className="whitespace-nowrap">{member.location}</TableCell>
                 <TableCell className="text-muted-foreground max-w-xs truncate">{member.groupNames}</TableCell>
                 <TableCell className="text-right">

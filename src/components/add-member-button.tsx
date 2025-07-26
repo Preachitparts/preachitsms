@@ -101,6 +101,11 @@ export function AddMemberButton({ groups }: { groups: Group[] }) {
                 {state.error?.phone && <p className="text-destructive text-sm">{state.error.phone[0]}</p>}
             </div>
             <div className="space-y-2">
+                <Label htmlFor="email">Email (Optional)</Label>
+                <Input id="email" name="email" type="email" />
+                {state.error?.email && <p className="text-destructive text-sm">{state.error.email[0]}</p>}
+            </div>
+            <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" name="location" />
                 {state.error?.location && <p className="text-destructive text-sm">{state.error.location[0]}</p>}

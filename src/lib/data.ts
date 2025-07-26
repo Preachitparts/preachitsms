@@ -1,12 +1,12 @@
 
-
 import { db } from './firebase';
-import { collection, getDocs, query, orderBy, getDoc, doc, Timestamp, limit,getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, getDoc, doc, Timestamp, limit,getCountFromServer, where } from 'firebase/firestore';
 
 export interface Contact {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   location?: string;
   groups?: string[];
 }
@@ -46,10 +46,13 @@ export interface AdminDoc {
 }
 
 
-export async function getContacts(): Promise<Contact[]> {
+export async function getContacts(options?: { withEmail?: boolean }): Promise<Contact[]> {
   try {
-    const contactsCol = collection(db, 'contacts');
-    const contactsSnapshot = await getDocs(query(contactsCol, orderBy('name')));
+    let q = query(collection(db, 'contacts'), orderBy('name'));
+    if (options?.withEmail) {
+        q = query(q, where('email', '!=', ''));
+    }
+    const contactsSnapshot = await getDocs(q);
     const contactsList = contactsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
