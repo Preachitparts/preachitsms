@@ -7,10 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmail } from '@/app/actions';
 import type { Contact } from '@/lib/data';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, X } from 'lucide-react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
+import { Badge } from './ui/badge';
+import { z } from 'zod';
+
+const emailSchema = z.string().email();
 
 export function EmailComposerForm({ contacts }: { contacts: Contact[] }) {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
@@ -18,6 +22,7 @@ export function EmailComposerForm({ contacts }: { contacts: Contact[] }) {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
 
   const toggleRecipient = (email: string) => {
     setSelectedEmails(prev => {
@@ -30,26 +35,34 @@ export function EmailComposerForm({ contacts }: { contacts: Contact[] }) {
       return newSet;
     });
   };
+  
+  const handleManualAdd = () => {
+    const result = emailSchema.safeParse(manualEmail);
+    if (result.success) {
+      toggleRecipient(result.data);
+      setManualEmail('');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address.',
+      });
+    }
+  };
 
   const filteredContacts = contacts.filter(contact => 
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    contact.email && (
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
-
-  const handleSelectAll = () => {
-    if (selectedEmails.size === filteredContacts.length) {
-      setSelectedEmails(new Set());
-    } else {
-      setSelectedEmails(new Set(filteredContacts.map(c => c.email).filter((e): e is string => !!e)));
-    }
-  }
   
   const handleSubmit = async (formData: FormData) => {
     if (selectedEmails.size === 0) {
       toast({
         variant: 'destructive',
         title: 'No recipients',
-        description: 'Please select at least one recipient.',
+        description: 'Please select or add at least one recipient.',
       });
       return;
     }
@@ -102,16 +115,38 @@ export function EmailComposerForm({ contacts }: { contacts: Contact[] }) {
        </div>
       
       <div className="space-y-4">
-        <Label>Select Recipients ({selectedEmails.size} selected)</Label>
+        <Label>Recipients ({selectedEmails.size} selected)</Label>
+        {selectedEmails.size > 0 && (
+          <div className="space-y-2 rounded-md border p-2">
+             <Label className="text-xs text-muted-foreground">Selected Emails</Label>
+             <div className="flex flex-wrap gap-2">
+              {Array.from(selectedEmails).map(email => (
+                <Badge key={email} variant="secondary">
+                  {email}
+                  <button type="button" onClick={() => toggleRecipient(email)} className="ml-1 rounded-full p-0.5 hover:bg-destructive/20">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="Add email address manually..."
+              value={manualEmail}
+              onChange={(e) => setManualEmail(e.target.value)}
+              onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleManualAdd(); }}}
+            />
+            <Button type="button" variant="outline" onClick={handleManualAdd}>Add</Button>
+        </div>
         <div className='flex gap-2'>
             <Input 
-                placeholder='Search contacts...'
+                placeholder='Search contacts by name or email...'
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button type="button" variant="outline" onClick={handleSelectAll}>
-              {selectedEmails.size === filteredContacts.length ? 'Deselect All' : 'Select All'}
-            </Button>
         </div>
         <ScrollArea className="h-64 rounded-md border p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
