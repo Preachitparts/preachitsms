@@ -72,6 +72,7 @@ export async function sendDashboardSms(formData: FormData) {
           recipientCount: 1,
           message,
           status: 'Sent',
+          type: 'single',
           date: new Date().toISOString().split('T')[0],
           createdAt: new Date(),
         });
@@ -89,6 +90,7 @@ export async function sendDashboardSms(formData: FormData) {
           recipientCount: 1,
           message,
           status: 'Failed',
+          type: 'single',
           date: new Date().toISOString().split('T')[0],
           createdAt: new Date(),
           errorMessage: errorMessage

@@ -99,7 +99,7 @@ export function EditMemberButton({ member, groups }: { member: Contact, groups: 
                 {state.error?.phone && <p className="text-destructive text-sm">{state.error.phone[0]}</p>}
             </div>
              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email (Optional)</Label>
                 <Input id="email" name="email" type="email" defaultValue={member.email} />
                 {state.error?.email && <p className="text-destructive text-sm">{state.error.email[0]}</p>}
             </div>

@@ -24,11 +24,13 @@ export interface SmsRecord {
   id: string;
   senderId?: string;
   recipientCount: number;
-  recipientGroups?: string[];
   message: string;
-  status: 'Sent' | 'Failed' | 'Pending';
+  status: 'Sent' | 'Failed' | 'Partially Sent';
+  type: 'single' | 'bulk';
   date: string;
   createdAt: any;
+  errorMessage?: string;
+  failedRecipients?: string[];
 }
 
 export interface DashboardStats {

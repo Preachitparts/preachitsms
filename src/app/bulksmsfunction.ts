@@ -44,74 +44,50 @@ export async function sendBulkSms(formData: FormData) {
     if (recipients.length === 0) {
       return { success: false, error: 'No recipients selected.' };
     }
-
-    // Track failures
-    const failedRecipients: string[] = [];
-
-    for (const recipient of recipients) {
-      const payload = {
+    
+    const payload = {
         From: senderId,
-        To: recipient,
+        To: recipients,
         Content: message,
-      };
+    };
 
-      const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
+    const hubtelResponse = await fetch('https://sms.hubtel.com/v1/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Basic ' + btoa(`${apiKeys.clientId}:${apiKeys.clientSecret}`),
         },
         body: JSON.stringify(payload),
-      });
+    });
 
-      const hubtelResponseText = await hubtelResponse.text();
-      let hubtelResult;
-      try {
+    const hubtelResponseText = await hubtelResponse.text();
+    let hubtelResult;
+    try {
         hubtelResult = JSON.parse(hubtelResponseText);
-      } catch (e) {
+    } catch (e) {
         console.error('Hubtel API invalid JSON response:', hubtelResponseText);
-        failedRecipients.push(recipient);
-        continue;
-      }
-
-      if (hubtelResponse.status !== 200 && hubtelResponse.status !== 201) {
-        console.error('Hubtel API Error:', hubtelResult);
-        failedRecipients.push(recipient);
-        continue;
-      }
-
-      if (
-        (hubtelResult.status !== 0 && hubtelResult.Status !== 0) &&
-        !hubtelResult.jobId
-      ) {
-        console.error('Hubtel API logical error:', hubtelResult);
-        failedRecipients.push(recipient);
-        continue;
-      }
+        throw new Error(`Hubtel API returned an invalid response. Status: ${hubtelResponse.status}. Response: ${hubtelResponseText}`);
     }
 
-    const status = failedRecipients.length === 0 ? 'Sent' : 'Partially Sent';
+    if (!hubtelResponse.ok) { // Catches 4xx and 5xx errors
+        console.error('Hubtel API Error:', hubtelResult);
+        const errorMessage = hubtelResult.message || hubtelResult.Message || `Request failed. Status: ${hubtelResponse.status}`;
+        throw new Error(errorMessage);
+    }
 
     await addDoc(collection(db, 'smsHistory'), {
       senderId,
       recipientCount: recipients.length,
-      failedRecipientCount: failedRecipients.length,
-      recipientGroups: [],
+      failedRecipientCount: 0, 
       message,
-      status,
+      status: 'Sent',
+      type: 'bulk',
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date(),
-      ...(failedRecipients.length > 0 ? { failedRecipients } : {}),
     });
 
     revalidatePath('/history');
-
-    return failedRecipients.length === 0
-      ? { success: true }
-      : {
-          success: false,
-          error: `Some messages failed to send: ${failedRecipients.join(', ')}`,
-        };
+    return { success: true };
 
   } catch (error) {
     console.error('SMS sending error:', error);
@@ -121,9 +97,9 @@ export async function sendBulkSms(formData: FormData) {
     await addDoc(collection(db, 'smsHistory'), {
       senderId: smsData.senderId,
       recipientCount: smsData.recipients.length,
-      recipientGroups: [],
       message: smsData.message,
       status: 'Failed',
+      type: 'bulk',
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date(),
       errorMessage,
