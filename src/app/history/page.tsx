@@ -14,7 +14,7 @@ export default async function HistoryPage() {
 
     return (
         <MainLayout>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 p-4 md:p-6">
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-headline">SMS History</CardTitle>

@@ -12,7 +12,7 @@ export default async function GroupsPage() {
 
   return (
     <MainLayout>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 p-4 md:p-6">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -24,7 +24,9 @@ export default async function GroupsPage() {
         </Card>
         <Card>
             <CardContent className="p-0">
-              <GroupsClient initialGroups={groups} />
+                <div className="overflow-x-auto">
+                  <GroupsClient initialGroups={groups} />
+                </div>
             </CardContent>
         </Card>
       </div>

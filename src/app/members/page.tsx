@@ -16,7 +16,7 @@ export default async function MembersPage() {
 
   return (
     <MainLayout>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 p-4 md:p-6">
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
@@ -31,7 +31,9 @@ export default async function MembersPage() {
             </Card>
             <Card>
                  <CardContent className="p-0">
-                    <MembersClient initialMembers={initialMembers} initialGroups={initialGroups} />
+                    <div className="overflow-x-auto">
+                      <MembersClient initialMembers={initialMembers} initialGroups={initialGroups} />
+                    </div>
                  </CardContent>
             </Card>
         </div>
