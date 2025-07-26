@@ -52,17 +52,23 @@ export async function getContacts(options?: { withEmail?: boolean }): Promise<Co
   try {
     let q;
     if (options?.withEmail) {
-        // This query structure avoids needing a composite index.
-        // Order by the field used in the inequality, then order by the desired field.
-        q = query(collection(db, 'contacts'), orderBy('email'), where('email', '!=', ''), orderBy('name'));
+        // Use a more performant query that doesn't require a composite index.
+        // We filter for existing emails and can sort by name on the client if needed.
+        q = query(collection(db, 'contacts'), where('email', '>', ''));
     } else {
         q = query(collection(db, 'contacts'), orderBy('name'));
     }
     const contactsSnapshot = await getDocs(q);
-    const contactsList = contactsSnapshot.docs.map(doc => ({
+    let contactsList = contactsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as Contact));
+    
+    // Sort by name client-side if we fetched by email to maintain consistent ordering
+    if (options?.withEmail) {
+        contactsList.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
     return contactsList;
   } catch (error) {
     console.error("Error fetching contacts: ", error);
