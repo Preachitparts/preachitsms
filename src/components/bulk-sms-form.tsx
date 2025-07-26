@@ -53,19 +53,11 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
       return;
     }
     
-    // The sendBulkSms action expects selectedContacts (which are IDs)
-    // but the UI is selecting phones. We will just pass the phones directly.
-    // Let's modify the form data before sending.
     const contactMap = new Map(contacts.map(c => [c.phone, c.id]));
     const selectedContactIds = Array.from(selectedPhones).map(phone => contactMap.get(phone)).filter(Boolean) as string[];
 
-    // Since sendBulkSms is designed to work with groups and contacts, we will pass contact IDs
     selectedContactIds.forEach(id => formData.append('selectedContacts', id));
     
-    // We'll also set selectedGroups to empty array
-    formData.append('selectedGroups', '');
-
-
     startTransition(async () => {
       const result = await sendBulkSms(formData);
       if (result.success) {

@@ -37,9 +37,10 @@ export async function sendBulkSms(formData: FormData) {
     const { message, senderId, selectedContacts, selectedGroups } = parsed.data;
 
     let recipientGroupNames: string[] = [];
-    if (selectedGroups.length > 0) {
+    const validGroups = selectedGroups.filter(Boolean);
+    if (validGroups.length > 0) {
       try {
-        const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', selectedGroups));
+        const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', validGroups));
         const groupsSnapshot = await getDocs(groupsQuery);
         recipientGroupNames = groupsSnapshot.docs.map(d => d.data().name);
       } catch (e) {
@@ -54,9 +55,10 @@ export async function sendBulkSms(formData: FormData) {
         }
 
         const allRecipientNumbers = new Set<string>();
+        const validContacts = selectedContacts.filter(Boolean);
 
-        if (selectedContacts.length > 0) {
-            const contactsQuery = query(collection(db, 'contacts'), where('__name__', 'in', selectedContacts));
+        if (validContacts.length > 0) {
+            const contactsQuery = query(collection(db, 'contacts'), where('__name__', 'in', validContacts));
             const contactsSnapshot = await getDocs(contactsQuery);
             contactsSnapshot.forEach(doc => {
                 const contact = doc.data();
@@ -66,8 +68,8 @@ export async function sendBulkSms(formData: FormData) {
             });
         }
 
-        if (selectedGroups.length > 0) {
-            const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', selectedGroups));
+        if (validGroups.length > 0) {
+            const groupsQuery = query(collection(db, 'groups'), where('__name__', 'in', validGroups));
             const groupsSnapshot = await getDocs(groupsQuery);
             const memberIds = new Set<string>();
             groupsSnapshot.forEach(doc => {
