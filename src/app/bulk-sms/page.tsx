@@ -1,23 +1,26 @@
-
-import { getContacts, getGroups, getDashboardStats } from '@/lib/data';
-import { DashboardClient } from '../dashboard-client';
+import { getContacts } from '@/lib/data';
+import { MainLayout } from '@/components/main-layout';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { BulkSmsForm } from '@/components/bulk-sms-form';
 
 export const revalidate = 0; // Ensure dynamic rendering
 
 export default async function BulkSmsPage() {
-  // Fetch initial data on the server
-  const [initialContacts, initialGroups, initialStats] = await Promise.all([
-    getContacts(),
-    getGroups(),
-    getDashboardStats(),
-  ]);
+  const initialContacts = await getContacts();
 
   return (
-    <DashboardClient
-      initialContacts={initialContacts}
-      initialGroups={initialGroups}
-      initialStats={initialStats}
-      isBulk
-    />
+    <MainLayout>
+        <div className="flex flex-col gap-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Bulk SMS</CardTitle>
+                    <CardDescription>Select recipients and send a message to all of them at once.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <BulkSmsForm contacts={initialContacts} />
+                </CardContent>
+            </Card>
+        </div>
+    </MainLayout>
   );
 }
