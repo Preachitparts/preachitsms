@@ -75,6 +75,14 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
     });
   };
 
+  if (contacts.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-10">
+        <p>No contacts available.</p>
+        <p className="text-sm">Please add some contacts first in the Members section.</p>
+      </div>
+    );
+  }
   return (
     <form ref={formRef} action={handleSubmit} className="space-y-6">
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -116,6 +124,11 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
             </Button>
         </div>
         <ScrollArea className="h-64 rounded-md border p-4">
+            {filteredContacts.length === 0 ? (
+              <div className="text-center text-muted-foreground py-4">
+                <p>No contacts found matching your search.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {filteredContacts.map(contact => (
                 <Button
@@ -131,6 +144,7 @@ export function BulkSmsForm({ contacts }: { contacts: Contact[] }) {
                 </Button>
                 ))}
             </div>
+            )}
         </ScrollArea>
       </div>
 
